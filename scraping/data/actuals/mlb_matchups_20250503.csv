@@ -1,0 +1,37 @@
+matchup_id,date,home_team,away_team,home_pitcher,away_pitcher,game_time
+matchup1,2025-05-03,NYY,TB,,,
+matchup2,2025-05-03,TOR,CLE,,,
+matchup3,2025-05-03,SF,COL,,,
+matchup4,2025-05-03,MIA,ATH,,,
+matchup5,2025-05-03,CIN,WSH,,,
+matchup6,2025-05-03,TEX,SEA,,,7:05 PM ET
+matchup7,2025-05-03,MIL,CHC,,,7:10 PM ET
+matchup8,2025-05-03,BAL,KC,,,7:15 PM ET
+matchup9,2025-05-03,ATL,LAD,,,7:15 PM ET
+matchup10,2025-05-03,LAA,DET,,,9:38 PM ET
+matchup11,2025-05-03,STL,NYM,,,
+matchup12,2025-05-03,STL,NYM,,,6:15 PM ET
+matchup13,2025-05-03,BAL,KC,,,1:35 PM ET
+matchup14,2025-05-03,PIT,SD,,,1:35 PM ET
+matchup15,2025-05-03,BOS,MIN,,,1:35 PM ET
+matchup16,2025-05-03,NYY,TB,,,1:35 PM ET
+matchup17,2025-05-03,TOR,CLE,,,1:37 PM ET
+matchup18,2025-05-03,MIA,ATH,,,1:40 PM ET
+matchup19,2025-05-03,PHI,AZ,,,2:05 PM ET
+matchup20,2025-05-03,CWS,HOU,,,2:10 PM ET
+matchup21,2025-05-03,MIL,CHC,,,2:10 PM ET
+matchup22,2025-05-03,TEX,SEA,,,2:35 PM ET
+matchup23,2025-05-03,SF,COL,,,4:05 PM ET
+matchup24,2025-05-03,LAA,DET,,,4:07 PM ET
+matchup25,2025-05-03,CIN,WSH,,,4:10 PM ET
+matchup26,2025-05-03,ATL,LAD,,,7:10 PM ET
+matchup27,2025-05-05,MIA,LAD,,,6:40 PM ET
+matchup28,2025-05-05,WSH,CLE,,,6:45 PM ET
+matchup29,2025-05-05,NYY,SD,,,7:05 PM ET
+matchup30,2025-05-05,ATL,CIN,,,7:15 PM ET
+matchup31,2025-05-05,CHC,SF,,,7:40 PM ET
+matchup32,2025-05-05,KC,CWS,,,7:40 PM ET
+matchup33,2025-05-05,MIL,HOU,,,7:40 PM ET
+matchup34,2025-05-05,STL,PIT,,,7:45 PM ET
+matchup35,2025-05-05,AZ,NYM,,,9:40 PM ET
+matchup36,2025-05-05,ATH,SEA,,,10:05 PM ET
