@@ -182,6 +182,9 @@ The Win Probability column represents the model’s estimated probability that t
 
 For example:
 
+![image](https://github.com/user-attachments/assets/ce48f386-aa72-4eb6-a875-128f87197000)
+
+
 In the TOR vs NYY matchup, the win probability for Toronto (home team) is 0.34, meaning the model estimates a 66% (1-0.34) chance that the Yankees (away team) will win. Thus, the prediction is "Pick: NYY".
 
 This decision is based on a machine learning model trained on historical data with a backtested accuracy of 92.4%, and a mean absolute error of 0.076.
