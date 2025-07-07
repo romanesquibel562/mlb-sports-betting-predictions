@@ -189,7 +189,13 @@ In the TOR vs NYY matchup, the win probability for Toronto (home team) is 0.34, 
 
 This decision is based on a machine learning model trained on historical data with a backtested accuracy of 92.4%, and a mean absolute error of 0.076.
 
-How to Run
+## Model Accuracy/ Performance
+![image](https://github.com/user-attachments/assets/11847757-7d70-4e0e-9ca5-5e274a8fe4f6)
+
+Over multiple game days, this model has achieved an accuracy of ~64%, consistently outperforming naive baselines (e.g., always picking the home team at ~53–55%) and aligning with the upper range of public predictive systems. For reference, industry benchmarks such as ESPN's Elo or FiveThirtyEight’s MLB models typically range between 58–62% accuracy, while Vegas implied probabilities hover around 57–60%. Sustained performance above 60% without relying on betting odds, which indicates strong predictive signal and positions this model near the upper tier of publicly available baseball forecasting tools.
+
+
+## How to Run
 1) Clone the repository:
 
 git clone https://github.com/YOUR_USERNAME/mlb-game-prediction.git
