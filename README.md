@@ -194,6 +194,11 @@ This decision is based on a machine learning model trained on historical data wi
 
 Over multiple game days, this model has achieved an accuracy of ~64%, consistently outperforming naive baselines (e.g., always picking the home team at ~53–55%) and aligning with the upper range of public predictive systems. For reference, industry benchmarks such as ESPN's Elo or FiveThirtyEight’s MLB models typically range between 58–62% accuracy, while Vegas implied probabilities hover around 57–60%. Sustained performance above 60% without relying on betting odds, which indicates strong predictive signal and positions this model near the upper tier of publicly available baseball forecasting tools.
 
+## Outputs
+![image](https://github.com/user-attachments/assets/cee0ed7d-87cf-4f6e-9424-9e0cbc70eb9c)
+![image](https://github.com/user-attachments/assets/c99563d5-a299-45be-9555-365a5c499aa1)
+![image](https://github.com/user-attachments/assets/f3589d1f-768d-4ae7-a3b0-5fa1bb089b5f)
+![image](https://github.com/user-attachments/assets/9a884fcf-7d67-43b1-8c2a-69e029c008a8)
 
 ## How to Run
 1) Clone the repository:
