@@ -1,9 +1,9 @@
 # main_features.py
 
 import pandas as pd
-import os
 import logging
 from datetime import datetime
+from pathlib import Path
 
 # Logger setup
 logging.basicConfig(
@@ -11,6 +11,11 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+# Base directory and processed directory
+BASE_DIR = Path(__file__).resolve().parents[1]
+PROCESSED_DIR = BASE_DIR / "data" / "processed"
+RAW_DIR = BASE_DIR / "data" / "raw"
 
 def normalize_name(name):
     if pd.isna(name):
@@ -27,16 +32,7 @@ def normalize_name(name):
             .replace(".", "")
     )
 
-def main():
-    today_str = datetime.today().strftime("%Y-%m-%d")
-
-    # File paths
-    matchup_path = f"C:/Users/roman/baseball_forecast_project/data/raw/mlb_probable_pitchers_{today_str}.csv"
-    pitcher_path = f"C:/Users/roman/baseball_forecast_project/data/processed/pitcher_stat_features_{today_str}.csv"
-    batter_path = f"C:/Users/roman/baseball_forecast_project/data/processed/team_batter_stats_{today_str}.csv"
-    team_form_path = "C:/Users/roman/baseball_forecast_project/data/processed/team_recent_form.csv"
-    output_path = f"C:/Users/roman/baseball_forecast_project/data/processed/main_features_{today_str}.csv"
-
+def build_main_features(matchup_path, pitcher_path, batter_path, team_form_path=PROCESSED_DIR / "team_recent_form.csv"):
     # Load matchups
     matchups = pd.read_csv(matchup_path)
     matchups["home_pitcher"] = matchups["home_pitcher"].apply(normalize_name)
@@ -60,7 +56,6 @@ def main():
     df = df.rename(columns={col: f"away_pitcher_{col}" for col in pitchers.columns if col != "full_name"})
     df.drop(columns=["full_name"], inplace=True)
 
-    # Log unmatched pitchers
     unmatched_home = df[df["home_pitcher_avg_velocity"].isna()]["home_pitcher"].unique()
     unmatched_away = df[df["away_pitcher_avg_velocity"].isna()]["away_pitcher"].unique()
     if len(unmatched_home) > 0:
@@ -85,7 +80,6 @@ def main():
     df = df.rename(columns={col: f"away_team_{col}" for col in batter_stats.columns if col != "team_name"})
     df.drop(columns=["team_name"], inplace=True)
 
-    # Log unmatched batter stats
     if df[["home_team_avg_launch_speed", "away_team_avg_launch_speed"]].isna().any().any():
         logger.warning("Some home or away team batter stats are missing.")
 
@@ -97,12 +91,21 @@ def main():
     df = df.merge(form.add_prefix("home_"), left_on="home_team", right_on="home_team", how="left")
     df = df.merge(form.add_prefix("away_"), left_on="away_team", right_on="away_team", how="left")
 
-    # Save final features
+    # Output path
+    game_date = pd.to_datetime(df["game_date"].iloc[0]).strftime('%Y-%m-%d')
+    output_path = PROCESSED_DIR / f"main_features_{game_date}.csv"
     df.to_csv(output_path, index=False)
     logger.info(f"Saved main features to: {output_path}")
 
+    return output_path
+
+# Allow standalone execution
 if __name__ == "__main__":
-    main()
+    today_str = datetime.today().strftime("%Y-%m-%d")
+    matchup_path = RAW_DIR / f"mlb_probable_pitchers_{today_str}.csv"
+    pitcher_path = PROCESSED_DIR / f"pitcher_stat_features_{today_str}.csv"
+    batter_path = PROCESSED_DIR / f"team_batter_stats_{today_str}.csv"
+    build_main_features(matchup_path, pitcher_path, batter_path)
 
 
     # cd C:\Users\roman\baseball_forecast_project\features
