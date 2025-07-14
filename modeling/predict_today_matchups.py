@@ -1,20 +1,19 @@
 # modeling/predict_today_matchups.py
 
 import pandas as pd
-import os
 import logging
-import glob
 from datetime import datetime
+from pathlib import Path
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def find_latest_file(folder_path, pattern):
-    files = sorted(glob.glob(os.path.join(folder_path, pattern)), reverse=True)
+def find_latest_file(folder_path: Path, pattern: str):
+    files = sorted(folder_path.glob(pattern), reverse=True)
     return files[0] if files else None
 
-def predict_today_matchups(model, feature_columns, team_feature_path, matchup_path, game_feature_path, output_dir="data/predictions"):
+def predict_today_matchups(model, feature_columns, team_feature_path, matchup_path, game_feature_path, output_dir=Path("data/predictions")):
     # Load data
     try:
         team_df = pd.read_csv(team_feature_path)
@@ -36,7 +35,7 @@ def predict_today_matchups(model, feature_columns, team_feature_path, matchup_pa
         'ATLÉTICOS': 'OAK', 'AZULEJOS': 'TOR', 'BRAVOS': 'ATL', 'CARDENALES': 'STL',
         'CERVECEROS': 'MIL', 'GIGANTES': 'SF', 'MARINEROS': 'SEA', 'NACIONALES': 'WSH',
         'PIRATAS': 'PIT', 'REALES': 'KC', 'ROJOS': 'CIN', 'TIGRES': 'DET', 'CACHORROS': 'CHC',
-        'D-BACKS': 'ARI', 'DIAMONDBACKS': 'ARI'
+        'D-BACKS': 'ARI'
     }
 
     try:
@@ -113,9 +112,9 @@ def predict_today_matchups(model, feature_columns, team_feature_path, matchup_pa
         }, inplace=True)
         output['Win Probability'] = output['Win Probability'].round(2)
         output.sort_values(by='Game Date', inplace=True)
-        os.makedirs(output_dir, exist_ok=True)
+        output_dir.mkdir(parents=True, exist_ok=True)
         today_str = datetime.today().strftime('%Y-%m-%d')
-        output_path = os.path.join(output_dir, f"readable_win_predictions_for_{today_str}.csv")
+        output_path = output_dir / f"readable_win_predictions_for_{today_str}.csv"
         output.to_csv(output_path, index=False)
         logger.info(f"Saved real-time predictions to: {output_path}")
     except Exception as e:
@@ -124,7 +123,6 @@ def predict_today_matchups(model, feature_columns, team_feature_path, matchup_pa
 
     return output_path
 
-
 # Standalone test block
 if __name__ == "__main__":
     from train_model import train_model
@@ -132,23 +130,24 @@ if __name__ == "__main__":
     today = datetime.today().date()
     today_str = today.strftime('%Y-%m-%d')
 
-    data_dir = r"C:\Users\roman\baseball_forecast_project\data"
-    processed_dir = os.path.join(data_dir, "processed")
-    raw_dir = os.path.join(data_dir, "raw")
+    project_root = Path(__file__).resolve().parents[1]
+    data_dir = project_root / "data"
+    processed_dir = data_dir / "processed"
+    raw_dir = data_dir / "raw"
 
-    team_feature_path = os.path.join(processed_dir, f"team_batter_stats_{today_str}.csv")
-    matchup_path = os.path.join(raw_dir, f"mlb_probable_pitchers_{today_str}.csv")
-    game_feature_path = os.path.join(processed_dir, f"features_{today_str}.csv")
+    team_feature_path = processed_dir / f"team_batter_stats_{today_str}.csv"
+    matchup_path = raw_dir / f"mlb_probable_pitchers_{today_str}.csv"
+    game_feature_path = processed_dir / f"features_{today_str}.csv"
 
-    if not os.path.exists(team_feature_path):
+    if not team_feature_path.exists():
         logger.warning("No team stats for today. Trying fallback...")
         team_feature_path = find_latest_file(processed_dir, "team_batter_stats_2025-*.csv")
 
-    if not os.path.exists(matchup_path):
+    if not matchup_path.exists():
         logger.warning("No matchup file for today. Trying fallback...")
         matchup_path = find_latest_file(raw_dir, "mlb_probable_pitchers_2025-*.csv")
 
-    if not os.path.exists(game_feature_path):
+    if not game_feature_path.exists():
         logger.warning("No features file for today. Trying fallback...")
         game_feature_path = find_latest_file(processed_dir, "features_2025-*.csv")
 
