@@ -1,5 +1,6 @@
 # scrape_historical_matchups.py (rolling-enabled)
 
+from pathlib import Path
 import os
 import pandas as pd
 from datetime import datetime, timedelta
@@ -14,15 +15,17 @@ import argparse
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-OUTPUT_DIR = "C:/Users/roman/baseball_forecast_project/data/raw/historical_matchups"
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+# <-- NEW: Use pathlib for portability
+BASE_DIR = Path(__file__).resolve().parents[1]
+OUTPUT_DIR = BASE_DIR / "data" / "raw" / "historical_matchups"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 def get_output_path(date_obj):
     date_str = date_obj.strftime("%Y-%m-%d")
-    return os.path.join(OUTPUT_DIR, f"historical_matchups_{date_str}.csv")
+    return OUTPUT_DIR / f"historical_matchups_{date_str}.csv"
 
 def file_exists_for_date(date_obj):
-    return os.path.exists(get_output_path(date_obj))
+    return get_output_path(date_obj).exists()
 
 def scrape_historical_matchups(date_obj: datetime) -> pd.DataFrame:
     date_str = date_obj.strftime('%Y-%m-%d')
@@ -114,6 +117,6 @@ if __name__ == "__main__":
         # Default: scrape yesterday only
         date = datetime.today() - timedelta(days=1)
         scrape_historical_matchups(date)
-
+        
     # cd C:\Users\roman\baseball_forecast_project\scraping
     # python scrape_historical_matchups.py  --rolling 20
