@@ -1,11 +1,12 @@
 # build_player_event_features.py
 
 import pandas as pd
-import os
 import logging
 import sys
 from datetime import datetime
+from pathlib import Path
 
+# === Logging ===
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -13,13 +14,21 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# === Project Paths ===
+BASE_DIR = Path(__file__).resolve().parents[1]
+RAW_DIR = BASE_DIR / "data" / "raw"
+PROCESSED_DIR = BASE_DIR / "data" / "processed"
+LOOKUP_PATH = BASE_DIR / "utils" / "data" / "reference" / "batter_team_lookup.csv"
+
+PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+
 def extract_date_from_filename(filename):
     try:
         return filename.replace("statcast_", "").replace(".csv", "")
     except:
         return None
 
-def build_player_event_features(statcast_path, filter_to_date=None):
+def build_player_event_features(statcast_path: Path, filter_to_date=None):
     logger.info(f"Building player-level features from: {statcast_path}")
 
     try:
@@ -76,33 +85,28 @@ def build_player_event_features(statcast_path, filter_to_date=None):
 
     # Merge with lookup
     try:
-        lookup_path = r"C:\Users\roman\baseball_forecast_project\evaluation\data\processed\batter_team_lookup.csv"
-        lookup_df = pd.read_csv(lookup_path)
+        lookup_df = pd.read_csv(LOOKUP_PATH)
         summary = pd.merge(summary, lookup_df, how='left', on='mlbam_id')
         logger.info("Merged batter lookup to add player_name and team.")
     except Exception as e:
         logger.warning(f"Failed to merge batter lookup: {e}")
 
-    date_part = extract_date_from_filename(os.path.basename(statcast_path))
-    output_dir = r"C:\Users\roman\baseball_forecast_project\data\processed"
-    os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, f"player_features_{date_part}.csv")
+    date_part = extract_date_from_filename(statcast_path.name)
+    output_path = PROCESSED_DIR / f"player_features_{date_part}.csv"
     summary.to_csv(output_path, index=False)
     logger.info(f"Saved player-level features to: {output_path}")
 
     return output_path
 
 if __name__ == "__main__":
-    raw_dir = r"C:\Users\roman\baseball_forecast_project\data\raw"
-    statcast_files = sorted([f for f in os.listdir(raw_dir) if f.startswith("statcast_")])
+    statcast_files = sorted(RAW_DIR.glob("statcast_*.csv"))
     if not statcast_files:
         logger.error("No Statcast files found.")
     else:
         latest_file = statcast_files[-1]
-        statcast_path = os.path.join(raw_dir, latest_file)
-        filter_date = extract_date_from_filename(latest_file)
-        logger.info(f"Running test on latest file: {statcast_path}")
-        build_player_event_features(statcast_path, filter_to_date=filter_date)
+        filter_date = extract_date_from_filename(latest_file.name)
+        logger.info(f"Running test on latest file: {latest_file}")
+        build_player_event_features(latest_file, filter_to_date=filter_date)
 
     # cd C:\Users\roman\baseball_forecast_project\features
     # python build_player_event_features.py
