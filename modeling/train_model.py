@@ -1,5 +1,6 @@
 # train_model.py
 
+from pathlib import Path
 import os
 import pandas as pd
 import numpy as np
@@ -10,6 +11,10 @@ from sklearn.metrics import accuracy_score, mean_absolute_error, mean_squared_er
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
+# === Root directory setup ===
+BASE_DIR = Path(__file__).resolve().parents[1]
+PROCESSED_DIR = BASE_DIR / "data" / "processed"
 
 
 def train_model(historical_path, today_path):
@@ -63,7 +68,8 @@ def train_model(historical_path, today_path):
 
     # Save readable predictions
     output_name = f"readable_win_predictions_for_{today_df['game_date'].iloc[0]}_using_{datetime.today().strftime('%Y-%m-%d')}.csv"
-    output_path = os.path.join("C:/Users/roman/baseball_forecast_project/data/processed", output_name)
+    output_path = PROCESSED_DIR / output_name
+    # output_path = os.path.join("C:/Users/roman/baseball_forecast_project/data/processed", output_name)
     result_df.to_csv(output_path, index=False)
     logger.info(f"Saved predictions to {output_path}")
 
@@ -71,11 +77,10 @@ def train_model(historical_path, today_path):
 
 
 if __name__ == "__main__":
-    base_path = r"C:\Users\roman\baseball_forecast_project\data\processed"
+    
     today_str = datetime.today().strftime('%Y-%m-%d')
-
-    historical_path = os.path.join(base_path, "historical_main_features.csv")
-    today_path = os.path.join(base_path, f"main_features_{today_str}.csv")
+    historical_path = PROCESSED_DIR / f"historical_main_features.csv"
+    today_path = PROCESSED_DIR / f"main_features_{today_str}.csv"
 
     try:
         train_model(historical_path, today_path)
