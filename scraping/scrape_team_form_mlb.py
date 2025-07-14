@@ -1,15 +1,20 @@
 # scrape_team_form_mlb.py
 
-
-
 import requests
 import pandas as pd
-import os
 import logging
+from pathlib import Path
 
+# === Logging ===
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
 
-# <-- NEW: team normalization dictionary
+# === Paths ===
+BASE_DIR = Path(__file__).resolve().parents[1]
+PROCESSED_DIR = BASE_DIR / "data" / "processed"
+PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+OUTPUT_PATH = PROCESSED_DIR / "team_recent_form.csv"
+
+# === Team Normalization Map ===
 TEAM_NAME_MAP = {
     'New York Yankees': 'NYY',
     'Boston Red Sox': 'BOS',
@@ -52,7 +57,7 @@ def scrape_team_form_mlb():
     for record_type in data.get('records', []):
         for team_rec in record_type.get('teamRecords', []):
             team_name = team_rec['team'].get('name', 'Unknown')
-            normalized_name = TEAM_NAME_MAP.get(team_name, team_name)  # <-- updated
+            normalized_name = TEAM_NAME_MAP.get(team_name, team_name)
             teams.append({
                 "team": normalized_name,
                 "wins": team_rec.get('wins'),
@@ -64,13 +69,8 @@ def scrape_team_form_mlb():
             })
 
     df = pd.DataFrame(teams)
-
-    output_path = os.path.join(
-        r"C:\Users\roman\baseball_forecast_project\data\processed",
-        "team_recent_form.csv"
-    )
-    df.to_csv(output_path, index=False)
-    logging.info(f"Saved {len(df)} team rows to {output_path}")
+    df.to_csv(OUTPUT_PATH, index=False)
+    logging.info(f"Saved {len(df)} team rows to {OUTPUT_PATH}")
 
 if __name__ == "__main__":
     scrape_team_form_mlb()
