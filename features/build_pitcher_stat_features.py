@@ -3,26 +3,35 @@
 from pybaseball import statcast, playerid_lookup
 from unidecode import unidecode
 import pandas as pd
+from pathlib import Path
 import os
 import glob
 from datetime import datetime, timedelta
 import logging
+import argparse
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def find_latest_matchup_file(directory: str) -> str:
-    files = glob.glob(os.path.join(directory, "mlb_probable_pitchers_*.csv"))
+# === Project Paths ===
+BASE_DIR = Path(__file__).resolve().parents[1]
+RAW_DIR = BASE_DIR / "data" / "raw"
+RAW_HISTORICAL_MATCHUPS_DIR = RAW_DIR / "historical_matchups"
+PROCESSED_DIR = BASE_DIR / "data" / "processed"
+PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+
+def find_latest_matchup_file(directory: Path) -> Path:
+    files = list(directory.glob("mlb_probable_pitchers_*.csv"))
     if not files:
         logger.error("No matchup files found.")
         return None
-    latest_file = max(files, key=os.path.getmtime)
+    latest_file = max(files, key=lambda x: x.stat().st_mtime)
     logger.info(f"Using matchup file: {latest_file}")
     return latest_file
 
-def extract_game_date_from_filename(filepath: str) -> datetime.date:
-    filename = os.path.basename(filepath)
+def extract_game_date_from_filename(filepath: Path) -> datetime.date:
+    filename = filepath.name
     date_part = filename.replace("mlb_probable_pitchers_", "").replace(".csv", "")
     try:
         return datetime.strptime(date_part, "%Y-%m-%d").date()
@@ -30,12 +39,12 @@ def extract_game_date_from_filename(filepath: str) -> datetime.date:
         logger.warning(f"Failed to parse date from filename '{filename}': {e}")
         return datetime.today().date()
 
-def build_pitcher_stat_features(matchup_path):
+
+def build_pitcher_stat_features(matchup_path: Path):
     try:
         logger.info(f"Loading matchup file: {matchup_path}")
         matchups = pd.read_csv(matchup_path)
 
-        # Use matchup file date as Statcast end date
         end_date = extract_game_date_from_filename(matchup_path)
         start_date = end_date - timedelta(days=30)
         start_str = start_date.strftime('%Y-%m-%d')
@@ -93,10 +102,7 @@ def build_pitcher_stat_features(matchup_path):
         metrics_df = metrics_df.round(2)
         logger.info(f"Final DataFrame built for {len(metrics_df)} pitchers.")
 
-        output_path = os.path.join(
-            "C:/Users/roman/baseball_forecast_project/data/processed",
-            f"pitcher_stat_features_{end_str}.csv"
-        )
+        output_path = PROCESSED_DIR / f"pitcher_stat_features_{end_str}.csv"
         metrics_df.to_csv(output_path, index=False)
         logger.info(f"Saved pitcher stat features to: {output_path}")
         print("\nFinal Output:\n", metrics_df.to_string(index=False))
@@ -107,15 +113,28 @@ def build_pitcher_stat_features(matchup_path):
         return None
 
 if __name__ == "__main__":
-    matchup_dir = "C:/Users/roman/baseball_forecast_project/data/raw"
-    latest_file = find_latest_matchup_file(matchup_dir)
-    if latest_file:
-        result_path = build_pitcher_stat_features(latest_file)
-        if result_path:
-            df = pd.read_csv(result_path)
-            print("\nReloaded CSV:\n", df.to_string(index=False))
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--date", help="Optional: Game date (YYYY-MM-DD)", type=str)
+    args = parser.parse_args()
 
+    if args.date:
+        date_str = args.date
+        matchup_path = RAW_HISTORICAL_MATCHUPS_DIR / f"historical_matchups_{date_str}.csv"
+        if not matchup_path.exists():
+            logger.error(f"Specified matchup file does not exist: {matchup_path}")
+            exit(1)
+    else:
+        matchup_path = find_latest_matchup_file(RAW_DIR)
+        if not matchup_path:
+            logger.error("No matchup file found.")
+            exit(1)
+
+    result_path = build_pitcher_stat_features(matchup_path)
+    if result_path:
+        df = pd.read_csv(result_path)
+        print("\nReloaded CSV:\n", df.to_string(index=False))
 
 # cd C:\Users\roman\baseball_forecast_project\features
         # python build_pitcher_stat_features.py
+        
         
