@@ -1,11 +1,11 @@
 # generate_historical_team_form.py
 
-import os
 import glob
 import logging
-import pandas as pd
 import requests
+import pandas as pd
 from datetime import datetime
+from pathlib import Path
 
 # Logging setup
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -25,15 +25,15 @@ TEAM_NAME_MAP = {
     'Los Angeles Dodgers': 'LAD', 'San Diego Padres': 'SD', 'San Francisco Giants': 'SF'
 }
 
-# Paths
-results_dir = "C:/Users/roman/baseball_forecast_project/data/processed"
-output_dir = results_dir
+# Base and output directories using pathlib
+BASE_DIR = Path(__file__).resolve().parents[1]
+PROCESSED_DIR = BASE_DIR / "data" / "processed"
 
 def scrape_team_form_api_for_date(date_str):
     """Scrape standings from MLB API and save as team_form_<date>.csv."""
     year = datetime.strptime(date_str, "%Y-%m-%d").year
     url = f"https://statsapi.mlb.com/api/v1/standings?leagueId=103,104&season={year}&standingsTypes=regularSeason&date={date_str}"
-    
+
     try:
         response = requests.get(url)
         data = response.json()
@@ -54,25 +54,25 @@ def scrape_team_form_api_for_date(date_str):
                 })
 
         df = pd.DataFrame(teams)
-        output_path = os.path.join(output_dir, f"team_form_{date_str}.csv")
+        output_path = PROCESSED_DIR / f"team_form_{date_str}.csv"
         df.to_csv(output_path, index=False)
         logger.info(f"Saved team form for {date_str} to {output_path}")
     except Exception as e:
         logger.error(f"Failed to scrape team form for {date_str}: {e}")
 
 def run_team_form_rolling():
-    existing = {os.path.basename(f).split("_")[-1].replace(".csv", "") for f in 
-                glob.glob(os.path.join(output_dir, "team_form_*.csv"))}
-    results_files = sorted(glob.glob(os.path.join(results_dir, "historical_results_*.csv")))
+    existing = {f.stem.split("_")[-1] for f in PROCESSED_DIR.glob("team_form_*.csv")}
+    results_files = sorted(PROCESSED_DIR.glob("historical_results_*.csv"))
 
-    for f in results_files:
-        date_str = os.path.basename(f).split("_")[-1].replace(".csv", "")
+    for result_file in results_files:
+        date_str = result_file.stem.split("_")[-1]
         if date_str in existing:
             continue
         scrape_team_form_api_for_date(date_str)
 
 if __name__ == "__main__":
     run_team_form_rolling()
+
 
     # cd C:\Users\roman\baseball_forecast_project\features
     # python generate_historical_team_form.py 
