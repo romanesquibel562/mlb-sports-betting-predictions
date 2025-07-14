@@ -5,7 +5,7 @@ from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 import pandas as pd
 from datetime import datetime, timedelta
-import os
+from pathlib import Path
 import logging
 
 # Logger setup
@@ -51,8 +51,8 @@ def normalize(name):
 
 def scrape_results_for_date(game_date, matchup_csv_path, output_dir):
     try:
-        result_path = os.path.join(output_dir, f"historical_results_{game_date}.csv")
-        if os.path.exists(result_path):
+        result_path = output_dir / f"historical_results_{game_date}.csv"
+        if result_path.exists():
             logger.info(f"Skipping {game_date} — results already exist.")
             return
 
@@ -117,13 +117,16 @@ def scrape_results_for_date(game_date, matchup_csv_path, output_dir):
 
 def run_rolling_scraper():
     today = datetime.today().date()
-    raw_dir = "C:/Users/roman/baseball_forecast_project/data/raw/historical_matchups"
-    output_dir = "C:/Users/roman/baseball_forecast_project/data/processed"
+    
+    # <-- NEW: Use pathlib for portability
+    BASE_DIR = Path(__file__).resolve().parents[1]
+    raw_dir = BASE_DIR / "data" / "raw" / "historical_matchups"
+    output_dir = BASE_DIR / "data" / "processed"
 
     for delta in range(1, 21):  # Last 20 days (excluding today)
         date = today - timedelta(days=delta)
-        matchup_file = os.path.join(raw_dir, f"historical_matchups_{date}.csv")
-        if os.path.exists(matchup_file):
+        matchup_file = raw_dir / f"historical_matchups_{date}.csv"
+        if matchup_file.exists():
             scrape_results_for_date(date, matchup_file, output_dir)
         else:
             logger.info(f"No matchup file found for {date}, skipping.")
@@ -131,7 +134,6 @@ def run_rolling_scraper():
 # Entry point
 if __name__ == "__main__":
     run_rolling_scraper()
-
 
 # cd C:\Users\roman\baseball_forecast_project\scraping
 # python scrape_game_results.py --rolling 20
