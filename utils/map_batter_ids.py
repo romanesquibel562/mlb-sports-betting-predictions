@@ -1,25 +1,32 @@
 # map_batter_ids.py
 
 import pandas as pd
-import os
-from datetime import datetime
 import logging
+from datetime import datetime
+from pathlib import Path
 
 # === Logger setup ===
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def enrich_batter_features_by_team(player_feature_path: str,
-                                   matchup_path: str,
-                                   batter_lookup_path: str = None) -> str:
+# === Base Paths ===
+BASE_DIR = Path(__file__).resolve().parents[1]
+PROCESSED_DIR = BASE_DIR / "data" / "processed"
+RAW_DIR = BASE_DIR / "data" / "raw"
+LOOKUP_PATH = BASE_DIR / "utils" / "data" / "reference" / "batter_team_lookup.csv"
+
+PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+
+def enrich_batter_features_by_team(player_feature_path: Path,
+                                   matchup_path: Path,
+                                   batter_lookup_path: Path = None) -> Path | None:
     try:
         # === 1. Load player features ===
         player_df = pd.read_csv(player_feature_path)
         logger.info(f"Loaded player features: {len(player_df)} rows")
 
         # === 2. Load batter-to-team mapping ===
-        default_lookup_path = r"C:\Users\roman\baseball_forecast_project\utils\data\reference\batter_team_lookup.csv"
-        lookup_path = batter_lookup_path or default_lookup_path
+        lookup_path = batter_lookup_path or LOOKUP_PATH
         lookup_df = pd.read_csv(lookup_path)
         logger.info(f"Loaded batter-team lookup: {len(lookup_df)} rows from {lookup_path}")
 
@@ -75,10 +82,7 @@ def enrich_batter_features_by_team(player_feature_path: str,
         team_summary = filtered.groupby('team_name')[available_cols].agg('mean').reset_index()
 
         # === 7. Save output ===
-        output_path = os.path.join(
-            "C:/Users/roman/baseball_forecast_project/data/processed",
-            f"team_batter_stats_{datetime.today().strftime('%Y-%m-%d')}.csv"
-        )
+        output_path = PROCESSED_DIR / f"team_batter_stats_{datetime.today().strftime('%Y-%m-%d')}.csv"
         team_summary.to_csv(output_path, index=False)
         logger.info(f"Saved aggregated team batter stats to: {output_path}")
         return output_path
@@ -89,9 +93,10 @@ def enrich_batter_features_by_team(player_feature_path: str,
 
 # === Manual test ===
 if __name__ == "__main__":
-    player_features_file = r"C:\Users\roman\baseball_forecast_project\data\processed\player_features_2025-06-27.csv"
-    matchup_file = r"C:\Users\roman\baseball_forecast_project\data\raw\mlb_probable_pitchers_2025-06-28.csv"
-    enrich_batter_features_by_team(player_features_file, matchup_file)
+    # Replace with actual filenames as needed for testing
+    sample_player_file = PROCESSED_DIR / "player_features_2025-06-27.csv"
+    sample_matchup_file = RAW_DIR / "mlb_probable_pitchers_2025-06-28.csv"
+    enrich_batter_features_by_team(sample_player_file, sample_matchup_file)
 
     # cd C:\Users\roman\baseball_forecast_project\utils
     # python map_batter_ids.py
