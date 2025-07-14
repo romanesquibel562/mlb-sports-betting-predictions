@@ -1,21 +1,24 @@
-import os
-import glob
+# historical_main_features.py
+
 import pandas as pd
 from datetime import datetime
+from pathlib import Path
 import logging
 
-# Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Setup logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-# Directories
-RAW_DIR = "C:/Users/roman/baseball_forecast_project/data/raw"
-HISTORICAL_MATCHUP_DIR = os.path.join(RAW_DIR, "historical_matchups")
-PROCESSED_DIR = "C:/Users/roman/baseball_forecast_project/data/processed"
-RAW_OUTPUT_PATH = os.path.join(PROCESSED_DIR, "historical_main_features_raw.csv")
-CLEAN_OUTPUT_PATH = os.path.join(PROCESSED_DIR, "historical_main_features.csv")
+# === PATH SETUP ===
+BASE_DIR = Path(__file__).resolve().parents[1]
+RAW_DIR = BASE_DIR / "data" / "raw"
+PROCESSED_DIR = BASE_DIR / "data" / "processed"
+HISTORICAL_MATCHUP_DIR = RAW_DIR / "historical_matchups"
 
-# Team name to abbreviation mapping
+RAW_OUTPUT_PATH = PROCESSED_DIR / "historical_main_features_raw.csv"
+CLEAN_OUTPUT_PATH = PROCESSED_DIR / "historical_main_features.csv"
+
+# === TEAM ABBREVIATION MAP ===
 TEAM_ABBREV_MAP = {
     "RED SOX": "BOS", "YANKEES": "NYY", "BLUE JAYS": "TOR", "RAYS": "TBR", "ORIOLES": "BAL",
     "WHITE SOX": "CHW", "GUARDIANS": "CLE", "TIGERS": "DET", "ROYALS": "KCR", "TWINS": "MIN",
@@ -26,28 +29,25 @@ TEAM_ABBREV_MAP = {
     "D-BACKS": "ARI"
 }
 
+
 def normalize_name(name):
     if pd.isna(name):
         return ""
     return (
-        name.upper()
-            .strip()
-            .replace("Á", "A")
-            .replace("É", "E")
-            .replace("Í", "I")
-            .replace("Ó", "O")
-            .replace("Ú", "U")
-            .replace("Ñ", "N")
+        name.upper().strip()
+            .replace("Á", "A").replace("É", "E").replace("Í", "I")
+            .replace("Ó", "O").replace("Ú", "U").replace("Ñ", "N")
             .replace(".", "")
     )
 
-def extract_date_from_filename(path, prefix):
-    name = os.path.basename(path)
-    return name.replace(prefix + "_", "").replace(".csv", "")
+
+def extract_date_from_filename(path: Path, prefix: str):
+    return path.name.replace(f"{prefix}_", "").replace(".csv", "")
+
 
 def load_csv_by_prefix(prefix, date_str, directory=PROCESSED_DIR):
-    path = os.path.join(directory, f"{prefix}_{date_str}.csv")
-    if os.path.exists(path):
+    path = directory / f"{prefix}_{date_str}.csv"
+    if path.exists():
         try:
             df = pd.read_csv(path)
             if df.empty:
@@ -61,11 +61,13 @@ def load_csv_by_prefix(prefix, date_str, directory=PROCESSED_DIR):
         logger.warning(f"Missing {prefix} for {date_str}")
         return None
 
+
 def map_abbrev(team):
     return TEAM_ABBREV_MAP.get(team.upper().strip(), team.upper().strip())
 
+
 def build_historical_main_dataset():
-    result_files = sorted(glob.glob(os.path.join(PROCESSED_DIR, "historical_results_*.csv")))
+    result_files = sorted(PROCESSED_DIR.glob("historical_results_*.csv"))
     if not result_files:
         logger.error("No historical_results_*.csv files found.")
         return
@@ -121,16 +123,16 @@ def build_historical_main_dataset():
             df = df.merge(team_df.add_prefix("home_"), left_on="home_team", right_on="home_team", how="left")
             df = df.merge(team_df.add_prefix("away_"), left_on="away_team", right_on="away_team", how="left")
 
-            # Normalize results
+            # Normalize and merge actual results
             results_df["home_team"] = results_df["home_team"].str.upper().str.strip()
             results_df["away_team"] = results_df["away_team"].str.upper().str.strip()
             results_df["winner"] = results_df["winner"].str.upper().str.strip()
 
-            # Merge results
             df = df.merge(results_df, on=["game_date", "home_team", "away_team"], how="inner")
-            df["actual_winner"] = results_df["winner"]
+            df["actual_winner"] = df["winner"]
 
             all_rows.append(df)
+
         except Exception as e:
             logger.error(f"Merge failed for {date_str}: {e}")
             continue
@@ -142,20 +144,21 @@ def build_historical_main_dataset():
     final_df = pd.concat(all_rows, ignore_index=True)
     final_df.to_csv(RAW_OUTPUT_PATH, index=False)
 
-    # CLEANING AND NORMALIZING
+    # CLEANING
     final_df.drop_duplicates(subset=["game_date", "home_team", "away_team"], inplace=True)
     final_df.dropna(axis=1, how="all", inplace=True)
-    for col in final_df.select_dtypes(include=['float64', 'int64']):
-        final_df[col].fillna(final_df[col].mean(), inplace=True)
-    final_df = final_df[final_df["actual_winner"].notna()]
 
-    # Map team names to abbreviations
+    for col in final_df.select_dtypes(include=["float64", "int64"]).columns:
+        final_df[col] = final_df[col].fillna(final_df[col].mean())
+
+    final_df = final_df[final_df["actual_winner"].notna()]
     final_df["home_team"] = final_df["home_team"].map(map_abbrev)
     final_df["away_team"] = final_df["away_team"].map(map_abbrev)
     final_df["actual_winner"] = final_df["actual_winner"].map(map_abbrev)
 
     final_df.to_csv(CLEAN_OUTPUT_PATH, index=False)
     logger.info(f"Saved clean final dataset to {CLEAN_OUTPUT_PATH} with {len(final_df)} rows.")
+
 
 if __name__ == "__main__":
     build_historical_main_dataset()
