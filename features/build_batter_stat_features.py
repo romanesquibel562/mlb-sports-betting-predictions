@@ -4,23 +4,33 @@ import pandas as pd
 import os
 import logging
 from datetime import datetime
+from pathlib import Path
 import glob
 from pybaseball import batting_stats
 from unidecode import unidecode
+import argparse
 
 # Setup logger
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-def find_latest_file(directory, prefix):
-    files = glob.glob(os.path.join(directory, f"{prefix}_*.csv"))
+# === Project Paths ===
+BASE_DIR = Path(__file__).resolve().parents[1]
+RAW_DIR = BASE_DIR / "data" / "raw"
+PROCESSED_DIR = BASE_DIR / "data" / "processed"
+LOOKUP_PATH = BASE_DIR / "utils" / "data" / "reference" / "batter_team_lookup.csv"
+
+PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+
+def find_latest_file(directory: Path, prefix: str) -> Path:
+    files = list(directory.glob(f"{prefix}_*.csv"))
     if not files:
         logger.error(f"No files found with prefix '{prefix}' in {directory}")
         return None
-    return max(files, key=os.path.getmtime)
+    return max(files, key=lambda x: x.stat().st_mtime)
 
 #  Add statcast_date=None for compatibility
-def build_batter_stat_features(statcast_path, lookup_path, statcast_date=None):  # <-- fixed
+def build_batter_stat_features(statcast_path: Path, lookup_path: Path, statcast_date=None):
     try:
         logger.info(f"Loading Statcast data from: {statcast_path}")
         statcast_df = pd.read_csv(statcast_path)
@@ -37,7 +47,6 @@ def build_batter_stat_features(statcast_path, lookup_path, statcast_date=None): 
             "batter": "mlbam_id",
             "team_name": "team"
         })
-
         lookup_df["lookup_player_name"] = lookup_df["name_first"].fillna('') + " " + lookup_df["name_last"].fillna('')
 
         merged = statcast_df.merge(lookup_df, left_on="batter", right_on="mlbam_id", how="inner")
@@ -72,17 +81,14 @@ def build_batter_stat_features(statcast_path, lookup_path, statcast_date=None): 
 
         full = summary.merge(season_df[['clean_name', 'HR', 'SO', 'PA', 'AVG', 'SLG']], on='clean_name', how='left')
         full = full.dropna(subset=['HR', 'SO', 'PA', 'AVG', 'SLG'])
-        logger.info(f"Remaining after merging with full-season stats: {len(full)}")
 
         full.drop(columns=['clean_name'], inplace=True)
         full = full.round(2)
 
-        #  Save using passed-in statcast_date if provided
         if statcast_date is None:
             statcast_date = datetime.today().date()
 
-        output_path = f"C:/Users/roman/baseball_forecast_project/data/processed/batter_stat_features_{statcast_date.strftime('%Y-%m-%d')}.csv"
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        output_path = PROCESSED_DIR / f"batter_stat_features_{statcast_date.strftime('%Y-%m-%d')}.csv"
         full.to_csv(output_path, index=False)
         logger.info(f"Saved batter stat features to: {output_path}")
 
@@ -90,13 +96,20 @@ def build_batter_stat_features(statcast_path, lookup_path, statcast_date=None): 
         logger.error(f"Error building batter stat features: {e}")
 
 if __name__ == "__main__":
-    statcast_path = find_latest_file("C:/Users/roman/baseball_forecast_project/data/raw", "statcast")
-    lookup_path = "C:/Users/roman/baseball_forecast_project/utils/data/reference/batter_team_lookup.csv"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--date", help="Statcast date to force output file format (YYYY-MM-DD)", type=str)
+    args = parser.parse_args()
 
-    if statcast_path and os.path.exists(lookup_path):
-        build_batter_stat_features(statcast_path, lookup_path)  # No statcast_date in standalone run
+    statcast_path = find_latest_file(RAW_DIR, "statcast")
+
+    if statcast_path and LOOKUP_PATH.exists():
+        if args.date:
+            statcast_date = pd.to_datetime(args.date).date()
+        else:
+            statcast_date = None
+        build_batter_stat_features(statcast_path, LOOKUP_PATH, statcast_date=statcast_date)
     else:
         logger.error("Required input files not found.")
-
+        
 #     # cd C:\Users\roman\baseball_forecast_project\features
 #     # python build_batter_stat_features.py
