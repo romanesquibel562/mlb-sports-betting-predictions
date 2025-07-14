@@ -3,6 +3,7 @@
 import os
 import logging
 from datetime import datetime
+from pathlib import Path
 
 # === Component imports ===
 from scraping.scrape_matchups import run_scrape_matchups
@@ -10,11 +11,17 @@ from scraping.scrape_statcast import scrape_statcast_today_or_recent
 from features.build_player_event_features import build_player_event_features
 from features.build_pitcher_stat_features import build_pitcher_stat_features
 from utils.map_batter_ids import enrich_batter_features_by_team
+from features.generate_historical_features import generate_all_historical_features  # <-- added
+from features.main_features import build_main_features
+from features.historical_main_features import build_historical_main_dataset
 from modeling.train_model import train_model
 
 # === Logging setup ===
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# === Directory setup ===
+BASE_DIR = Path(__file__).resolve().parent
 
 def run_pipeline():
     logger.info("Starting daily MLB prediction pipeline...")
@@ -64,16 +71,43 @@ def run_pipeline():
         logger.error(f"Pitcher aggregation failed: {e}")
         return
 
-    # === Step 6: Train model and generate predictions ===
+    # === Step 6: Build today's main features file ===
+    try:
+        logger.info("Building main features for today's matchups...")
+        main_features_path = build_main_features(matchup_csv_path, pitcher_feature_file, team_feature_file)
+        logger.info(f"Main features saved to: {main_features_path}")
+    except Exception as e:
+        logger.error(f"Failed to build main features: {e}")
+        return
+
+    # === Step 6A: Generate historical features before building training dataset ===
+    try:
+        logger.info("Step 6A: Generating all historical feature files...")
+        generate_all_historical_features()
+        logger.info("All historical features generated.")
+    except Exception as e:
+        logger.error(f"Failed to generate historical features: {e}")
+        return
+
+    # === Step 6B: Rebuild historical training dataset ===
+    try:
+        logger.info("Step 6B: Rebuilding historical training dataset...")
+        build_historical_main_dataset()
+        logger.info("Updated historical_main_features.csv for model training.")
+    except Exception as e:
+        logger.error(f"Failed to update historical dataset: {e}")
+        return
+
+    # === Step 7: Train model and generate predictions ===
     try:
         historical_path = os.path.join("data", "processed", "historical_main_features.csv")
-        today_path = os.path.join("data", "processed", f"main_features_{scraped_game_date_str}.csv")
+        today_path = main_features_path
         predictions_df = train_model(historical_path, today_path)
     except Exception as e:
         logger.error(f"Error during model training or prediction: {e}")
         return
 
-    # === Step 7: Filter predictions for today's matchups ===
+    # === Step 8: Filter predictions for today's matchups ===
     try:
         import pandas as pd
 
@@ -113,14 +147,14 @@ def run_pipeline():
         filtered = filtered.merge(matchups_today[['matchup_key', 'game_date']], on='matchup_key', how='left')
         filtered.drop(columns=['matchup_key'], inplace=True)
 
-        filtered_path = os.path.join("data", "predictions", "today_and_tomorrow_predictions.csv")
+        filtered_path = BASE_DIR / "data" / "predictions" / f"today_and_tomorrow_predictions.csv"
         filtered.to_csv(filtered_path, index=False)
         logger.info(f"Filtered predictions saved to: {filtered_path}")
     except Exception as e:
         logger.error(f"Failed to filter predictions: {e}")
         return
 
-    # === Step 8: Format final readable output ===
+    # === Step 9: Format final readable output ===
     try:
         df = pd.read_csv(filtered_path)
 
@@ -142,12 +176,12 @@ def run_pipeline():
         readable.sort_values(by=['Game Date', 'Home Team'], inplace=True)
         readable.drop_duplicates(subset=['Game Date', 'Home Team', 'Away Team'], inplace=True)
 
-        # Convert statcast date to datetime if needed
         if isinstance(statcast_actual_date, str):
             statcast_actual_date = datetime.strptime(statcast_actual_date, "%Y-%m-%d").date()
 
         output_name = f"readable_win_predictions_for_{scraped_game_date_str}_using_{statcast_actual_date.strftime('%Y-%m-%d')}.csv"
-        readable_path = os.path.join("data", "predictions", output_name)
+        readable_path = BASE_DIR / "data" / "predictions" / output_name
+        # readable_path = os.path.join("data", "predictions", output_name)
         readable.to_csv(readable_path, index=False)
         logger.info(f"Clean, deduplicated predictions saved to: {readable_path}")
     except Exception as e:
@@ -155,7 +189,6 @@ def run_pipeline():
 
 if __name__ == "__main__":
     run_pipeline()
-
 
 # cd C:\Users\roman\baseball_forecast_project
 # python run_daily_pipeline.py
