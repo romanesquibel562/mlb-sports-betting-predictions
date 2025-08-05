@@ -9,6 +9,9 @@ pybaseball>=2.3.7
 tqdm>=4.66.1
 python-dateutil>=2.8.2
 
+# new training model
+xgboost
+
 # Optional but recommended for compatibility
 pathlib
 
