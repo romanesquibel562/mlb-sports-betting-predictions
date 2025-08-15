@@ -9,6 +9,7 @@ import glob
 from datetime import datetime, timedelta
 import logging
 import argparse
+import csv
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -80,6 +81,15 @@ def build_pitcher_stat_features(matchup_path: Path):
 
         filtered_df = filtered_df.merge(pitcher_df, how='left', left_on='pitcher', right_on='mlbam_id')
 
+        filtered_df['is_strikeout'] = (
+            filtered_df['events'].fillna('').str.lower().str.startswith('strikeout'))
+        
+        filtered_df['is_whiff'] = filtered_df['description'].isin([
+            'swinging_strike',
+            'swinging_strike_blocked',
+            'foul_tip'
+        ])
+
         metrics_df = (
             filtered_df.groupby('pitcher')
             .agg(
@@ -88,8 +98,8 @@ def build_pitcher_stat_features(matchup_path: Path):
                 avg_velocity=('release_speed', 'mean'),
                 avg_spin_rate=('release_spin_rate', 'mean'),
                 avg_extension=('release_extension', 'mean'),
-                strikeouts=('events', lambda x: (x == 'strikeout').sum()),
-                whiffs=('events', lambda x: (x == 'swinging_strike').sum()),
+                strikeouts=('is_strikeout', 'sum'),
+                whiffs=('is_whiff', 'sum'),
                 avg_bat_speed=('bat_speed', 'mean'),
                 avg_launch_angle=('launch_angle', 'mean'),
                 avg_exit_velocity=('launch_speed', 'mean'),
@@ -103,7 +113,7 @@ def build_pitcher_stat_features(matchup_path: Path):
         logger.info(f"Final DataFrame built for {len(metrics_df)} pitchers.")
 
         output_path = PROCESSED_DIR / f"pitcher_stat_features_{end_str}.csv"
-        metrics_df.to_csv(output_path, index=False)
+        metrics_df.to_csv(output_path, index=False, quoting=csv.QUOTE_NONNUMERIC)
         logger.info(f"Saved pitcher stat features to: {output_path}")
         print("\nFinal Output:\n", metrics_df.to_string(index=False))
         return output_path
@@ -135,6 +145,7 @@ if __name__ == "__main__":
         print("\nReloaded CSV:\n", df.to_string(index=False))
 
 # cd C:\Users\roman\baseball_forecast_project\features
-        # python build_pitcher_stat_features.py
+# python build_pitcher_stat_features.py
+
         
         
