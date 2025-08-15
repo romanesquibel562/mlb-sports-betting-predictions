@@ -8,13 +8,16 @@ from pathlib import Path
 # === Component imports ===
 from scraping.scrape_matchups import run_scrape_matchups
 from scraping.scrape_statcast import scrape_statcast_today_or_recent
+from utils.build_batter_team_lookup import build_batter_team_lookup
 from features.build_player_event_features import build_player_event_features
 from features.build_pitcher_stat_features import build_pitcher_stat_features
 from utils.map_batter_ids import enrich_batter_features_by_team
 from features.generate_historical_features import generate_all_historical_features  # <-- added
 from features.main_features import build_main_features
 from features.historical_main_features import build_historical_main_dataset
-from modeling.train_model import train_model
+# from modeling.train_model import train_model
+from modeling.train_xgb import train_model  # <-- swapped import to use XGBoost version
+
 
 # === Logging setup ===
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -49,6 +52,15 @@ def run_pipeline():
         logger.error("Failed to build player-level features.")
         return
 
+    # === Step 3.5: Build batter-to-team lookup file ===
+    try:
+        logger.info("Step 3.5: Building batter-to-team lookup...")
+        build_batter_team_lookup(statcast_file)
+        logger.info("Batter-to-team lookup file created.")
+    except Exception as e:
+        logger.error(f"Failed to build batter-to-team lookup: {e}")
+        return
+    
     # === Step 4: Aggregate batter stats by team ===
     try:
         team_feature_file = enrich_batter_features_by_team(player_feature_file, matchup_csv_path)
