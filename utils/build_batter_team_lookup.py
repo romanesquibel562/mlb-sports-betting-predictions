@@ -5,10 +5,17 @@ import os
 from datetime import datetime
 import logging
 from pybaseball import playerid_reverse_lookup
+from pathlib import Path
 
 # Logger
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# === Project Paths ===
+BASE_DIR = Path(__file__).resolve().parents[1]
+REFERENCE_DIR = BASE_DIR / "utils" / "data" / "reference"
+REFERENCE_DIR.mkdir(parents=True, exist_ok=True)
+
 
 def build_batter_team_lookup(statcast_path: str) -> str:
     try:
@@ -41,26 +48,46 @@ def build_batter_team_lookup(statcast_path: str) -> str:
         final_df = pd.merge(batter_team_map, player_info, on='batter', how='left')
         final_df = final_df[['batter', 'name_first', 'name_last', 'team_name']].dropna()
 
-        # Save to correct reference path
-        output_path = os.path.join(
-            "C:/Users/roman/baseball_forecast_project/utils/data/reference",
-            "batter_team_lookup.csv"
-        )
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        final_df.to_csv(output_path, index=False)
+        # === Save both date-stamped and latest versions ===
+        statcast_date = extract_date_from_filename(statcast_path)
+        dated_output_path = REFERENCE_DIR / f"batter_team_lookup_{statcast_date}.csv"
+        latest_output_path = REFERENCE_DIR / "batter_team_lookup.csv"
 
-        logger.info(f"Saved batter-team lookup to: {output_path}")
-        return output_path
+        final_df.to_csv(dated_output_path, index=False)
+        final_df.to_csv(latest_output_path, index=False)
+
+        logger.info(f"Saved dated lookup to: {dated_output_path}")
+        logger.info(f"Overwrote latest lookup at: {latest_output_path}")
+        return str(latest_output_path)
 
     except Exception as e:
         logger.error(f"Failed to build batter-team lookup: {e}")
         return None
+    
+
+def extract_date_from_filename(path: str) -> str:
+    """Extracts date from a statcast_YYYY-MM-DD.csv filename."""
+    try:
+        filename = Path(path).name
+        date_str = filename.replace("statcast_", "").replace(".csv", "")
+        datetime.strptime(date_str, "%Y-%m-%d")  # validate format
+        return date_str
+    except Exception:
+        return datetime.today().strftime("%Y-%m-%d")
 
 # === Run standalone ===
 if __name__ == "__main__":
-    latest_statcast = r"C:\Users\roman\baseball_forecast_project\data\raw\statcast_2025-06-27.csv"
-    build_batter_team_lookup(latest_statcast)
+    statcast_dir = BASE_DIR / "data" / "raw"
+    statcast_files = sorted(statcast_dir.glob("statcast_*.csv"))
+    
+    if not statcast_files:
+        logger.error("No statcast files found.")
+    else:
+        latest_statcast = statcast_files[-1]
+        build_batter_team_lookup(latest_statcast)
+
 
 # cd C:\Users\roman\baseball_forecast_project\utils
 # python build_batter_team_lookup.py
+
 
