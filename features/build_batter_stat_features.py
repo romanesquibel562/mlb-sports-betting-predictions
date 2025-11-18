@@ -29,26 +29,60 @@ def find_latest_file(directory: Path, prefix: str) -> Path:
         return None
     return max(files, key=lambda x: x.stat().st_mtime)
 
-#  Add statcast_date=None for compatibility
+# Add statcast_date=None for compatibility
 def build_batter_stat_features(statcast_path: Path, lookup_path: Path, statcast_date=None):
     try:
         logger.info(f"Loading Statcast data from: {statcast_path}")
         statcast_df = pd.read_csv(statcast_path)
         logger.info(f"Loaded Statcast: {len(statcast_df)} rows")
 
+        # --- ensure expected columns exist / sane types ---
+        # Some Statcast pulls may miss these engineered columns; create if missing
+        for col in ['launch_speed', 'bat_speed', 'swing_length', 'pitch_number', 'events']:
+            if col not in statcast_df.columns:
+                statcast_df[col] = pd.NA
+                logger.warning(f"Missing column '{col}' in Statcast; filling with NaN/empty.")
+        # events should be string-like for startswith below
+        statcast_df['events'] = statcast_df['events'].fillna('')
+
         logger.info(f"Loading batter lookup table from: {lookup_path}")
         lookup_df = pd.read_csv(lookup_path)
         logger.info(f"Loaded lookup table: {len(lookup_df)} players")
 
+        # --- normalize lookup headers and keys ---
         lookup_df.columns = lookup_df.columns.str.strip()
         logger.info(f"Lookup columns after stripping: {list(lookup_df.columns)}")
 
-        lookup_df = lookup_df.rename(columns={
-            "batter": "mlbam_id",
-            "team_name": "team"
-        })
-        lookup_df["lookup_player_name"] = lookup_df["name_first"].fillna('') + " " + lookup_df["name_last"].fillna('')
+        # Keep compatibility if older lookup still uses 'batter'
+        if 'mlbam_id' not in lookup_df.columns and 'batter' in lookup_df.columns:
+            lookup_df = lookup_df.rename(columns={'batter': 'mlbam_id'})
 
+        # Your lookup currently stores team abbreviations in 'team_name'
+        if 'team' not in lookup_df.columns and 'team_name' in lookup_df.columns:
+            lookup_df = lookup_df.rename(columns={'team_name': 'team'})
+
+        # Build a readable name for later merges
+        if 'name_first' in lookup_df.columns and 'name_last' in lookup_df.columns:
+            lookup_df["lookup_player_name"] = lookup_df["name_first"].fillna('') + " " + lookup_df["name_last"].fillna('')
+        else:
+            lookup_df["lookup_player_name"] = ""
+
+        # --- align dtypes on merge keys ---
+        # Statcast key is 'batter'; make numeric nullable int
+        if 'batter' not in statcast_df.columns and 'mlbam_id' in statcast_df.columns:
+            # tolerate alt key in Statcast if present
+            statcast_df = statcast_df.rename(columns={'mlbam_id': 'batter'})
+        if 'batter' not in statcast_df.columns:
+            raise ValueError("Statcast data missing 'batter' (or 'mlbam_id') column for merge.")
+
+        statcast_df['batter'] = pd.to_numeric(statcast_df['batter'], errors='coerce').astype('Int64')
+
+        if 'mlbam_id' not in lookup_df.columns:
+            raise ValueError("Lookup data missing 'mlbam_id' column after normalization.")
+        lookup_df['mlbam_id'] = pd.to_numeric(lookup_df['mlbam_id'], errors='coerce').astype('Int64')
+        lookup_df = lookup_df.dropna(subset=['mlbam_id']).drop_duplicates(subset=['mlbam_id'])
+
+        # --- merge ---
         merged = statcast_df.merge(lookup_df, left_on="batter", right_on="mlbam_id", how="inner")
         logger.info(f"Merged DataFrame: {len(merged)} rows")
 
@@ -56,24 +90,29 @@ def build_batter_stat_features(statcast_path: Path, lookup_path: Path, statcast_
             logger.warning("No matching batter records found after merge.")
             return
 
+        # --- aggregate recent Statcast features per batter/team ---
         summary = merged.groupby(['mlbam_id', 'lookup_player_name', 'team']).agg(
             avg_launch_speed=('launch_speed', 'mean'),
             avg_bat_speed=('bat_speed', 'mean'),
             avg_swing_length=('swing_length', 'mean'),
             total_pitches=('pitch_number', 'count'),
-            recent_home_runs=('events', lambda x: (x == 'home_run').sum()),
-            recent_strikeouts=('events', lambda x: (x == 'strikeout').sum())
+            recent_home_runs=('events', lambda s: (s == 'home_run').sum()),
+            # count all strikeout variants: strikeout, strikeout_double_play, etc.
+            recent_strikeouts=('events', lambda s: s.str.startswith('strikeout', na=False).sum())
         ).reset_index()
 
+        # drop rows where we couldn't compute the numeric summaries
         summary = summary.dropna(subset=[
             'avg_launch_speed', 'avg_bat_speed', 'avg_swing_length',
             'total_pitches', 'recent_home_runs', 'recent_strikeouts'
         ])
         logger.info(f"Remaining batters after dropping NaNs: {len(summary)}")
 
+        # --- add season-long context ---
         year = datetime.today().year
         season_df = batting_stats(year)
         season_df = season_df[['Name', 'HR', 'SO', 'PA', 'AVG', 'SLG']]
+
         logger.info(f"Loaded full-season stats for {len(season_df)} players")
 
         summary['clean_name'] = summary['lookup_player_name'].apply(lambda x: unidecode(str(x)).strip().lower())
@@ -85,6 +124,7 @@ def build_batter_stat_features(statcast_path: Path, lookup_path: Path, statcast_
         full.drop(columns=['clean_name'], inplace=True)
         full = full.round(2)
 
+        # --- output ---
         if statcast_date is None:
             statcast_date = datetime.today().date()
 
@@ -110,6 +150,6 @@ if __name__ == "__main__":
         build_batter_stat_features(statcast_path, LOOKUP_PATH, statcast_date=statcast_date)
     else:
         logger.error("Required input files not found.")
-        
+
 #     # cd C:\Users\roman\baseball_forecast_project\features
 #     # python build_batter_stat_features.py
