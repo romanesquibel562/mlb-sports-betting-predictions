@@ -29,7 +29,9 @@ def build_batter_team_lookup(statcast_path: str) -> str:
 
         # Subset and drop rows with missing batter or team info
         lookup = df[required_cols].dropna().copy()
-        lookup['batter'] = lookup['batter'].astype(int)
+
+        # --- changed: standardize key to mlbam_id and make numeric nullable int ---
+        lookup['mlbam_id'] = pd.to_numeric(lookup['batter'], errors='coerce').astype('Int64')
 
         # Guess batter's team based on inning context
         lookup['team_name'] = lookup.apply(
@@ -37,16 +39,20 @@ def build_batter_team_lookup(statcast_path: str) -> str:
             axis=1
         )
 
-        # Drop duplicates
-        batter_team_map = lookup[['batter', 'team_name']].drop_duplicates()
+        # Drop duplicates to one row per batter
+        batter_team_map = lookup[['mlbam_id', 'team_name']].dropna(subset=['mlbam_id']).drop_duplicates()
 
         # Add player names
-        batter_ids = batter_team_map['batter'].tolist()
+        batter_ids = batter_team_map['mlbam_id'].dropna().astype('Int64').tolist()
         player_info = playerid_reverse_lookup(batter_ids)
-        player_info.rename(columns={'key_mlbam': 'batter'}, inplace=True)
 
-        final_df = pd.merge(batter_team_map, player_info, on='batter', how='left')
-        final_df = final_df[['batter', 'name_first', 'name_last', 'team_name']].dropna()
+        # --- changed: align player_info key name to mlbam_id ---
+        player_info = player_info.rename(columns={'key_mlbam': 'mlbam_id'})
+
+        final_df = pd.merge(batter_team_map, player_info, on='mlbam_id', how='left')
+
+        # Keep tidy columns, now keyed by mlbam_id
+        final_df = final_df[['mlbam_id', 'name_first', 'name_last', 'team_name']].dropna(subset=['mlbam_id'])
 
         # === Save both date-stamped and latest versions ===
         statcast_date = extract_date_from_filename(statcast_path)
