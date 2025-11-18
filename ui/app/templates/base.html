@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ page_title or "MLB Dashboard" }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+<nav class="nav">
+    <a href="{{ url_for('ui.power_rankings') }}">Power Rankings</a>
+    <!-- later: more nav links (Today’s Games, EV vs Vegas, etc.) -->
+</nav>
+
+<div class="container">
+    {% block content %}{% endblock %}
+</div>
+</body>
+</html>
