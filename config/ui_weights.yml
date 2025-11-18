@@ -1,0 +1,25 @@
+team_gpa_weights:
+  recent_win_pct: 0.45        
+  run_diff_per_game: 0.25
+  batting_power_idx: 0.30     
+
+
+batter_columns:
+  team_file:
+    team: "team_name"
+    avg_launch_speed: "avg_launch_speed"
+    hr_proxy: null            
+  player_file:
+    team: "team_name"
+    avg_launch_speed: "avg_launch_speed"
+    hr_rate: "home_run_rate"
+
+
+pitcher_columns:
+  team: "team_name"           
+  era: null
+  k9: null
+  whip: null
+
+data_windows:
+  lookback_days_batting: 80 
