@@ -21,7 +21,11 @@ PROCESSED_DIR = BASE_DIR / "data" / "processed"
 PLOTS_DIR = BASE_DIR / "plots"
 PLOTS_DIR.mkdir(parents=True, exist_ok=True)
 
-def train_model(historical_path, today_path):
+def train_model(historical_path, today_path=None, today_df=None):  
+    """
+    Train on historical_main_features.csv and predict today.
+    You can pass EITHER `today_path` (CSV on disk) OR `today_df` (DataFrame).
+    """
     logger.info(f"Loading historical dataset from {historical_path}")
     historical_df = pd.read_csv(historical_path)
 
@@ -30,7 +34,8 @@ def train_model(historical_path, today_path):
         "actual_winner", "game_date", "home_team", "away_team",
         "home_pitcher", "away_pitcher", "home_pitcher_full_name", "away_pitcher_full_name"
     ]
-    numeric_cols = [col for col in historical_df.columns if col not in non_feature_cols and pd.api.types.is_numeric_dtype(historical_df[col])]
+    numeric_cols = [col for col in historical_df.columns
+                    if col not in non_feature_cols and pd.api.types.is_numeric_dtype(historical_df[col])]
     X_train = historical_df[numeric_cols]
     y_train = (historical_df["actual_winner"] == historical_df["home_team"]).astype(int)
 
@@ -48,10 +53,9 @@ def train_model(historical_path, today_path):
         use_label_encoder=False,
         eval_metric='logloss'
     )
-
     base_model.fit(X_train, y_train)
 
-   # === Plot feature importances (Top 10) ===
+    # === Plot feature importances (Top 10) ===
     importances = base_model.feature_importances_
     importance_df = pd.DataFrame({
         'Feature': X_train.columns,
@@ -121,9 +125,16 @@ def train_model(historical_path, today_path):
     plt.savefig(PLOTS_DIR / 'probability_histogram.png')
     plt.close()
 
-    # === Load today’s features and make predictions ===
-    logger.info(f"Loading today’s features from {today_path}")
-    today_df = pd.read_csv(today_path)
+    # === Load today's features and make predictions ===
+    if today_df is None:  
+        if today_path is None:
+            raise ValueError("Provide either today_path or today_df to train_model().")
+        logger.info(f"Loading today’s features from {today_path}")
+        today_df = pd.read_csv(today_path)
+    else:
+        logger.info("Using today_df passed in-memory (e.g., from SimulationDataSource).") 
+
+    # Align columns to training features
     X_today = today_df.reindex(columns=X_train.columns, fill_value=0)
 
     today_prob = model.predict_proba(X_today)[:, 1]
@@ -138,8 +149,9 @@ def train_model(historical_path, today_path):
                                "Pick: " + today_df["away_team"])
     })
 
-    matchup_date = today_df['game_date'].iloc[0]
-    statcast_date = datetime.today().strftime('%Y-%m-%d')
+    # Use the simulated game_date for naming to avoid confusion in offseason demos 
+    matchup_date = pd.to_datetime(today_df['game_date'].iloc[0]).date()
+    statcast_date = datetime.today().strftime('%Y-%m-%d')  # keep if you want "using_{statcast_date}"
     output_name = f"readable_win_predictions_for_{matchup_date}_using_{statcast_date}.csv"
     output_path = PROCESSED_DIR / output_name
     result_df.to_csv(output_path, index=False)
@@ -147,7 +159,16 @@ def train_model(historical_path, today_path):
     logger.info(f"Saved predictions to: {output_path}")
     return result_df
 
-# Run standalone
+# ---- convenience wrapper to plug SimulationDataSource directly --------- 
+def predict_from_main_features(main_features_df: pd.DataFrame, game_date_str: str) -> pd.DataFrame:
+    """
+    Train on historical_main_features.csv and predict using the provided main_features_df.
+    """
+    historical_path = PROCESSED_DIR / "historical_main_features.csv"
+    return train_model(historical_path=historical_path, today_df=main_features_df)
+# ------------------------------------------------------------------------  
+
+# Run standalone (unchanged fallback)
 if __name__ == "__main__":
     today_str = datetime.today().strftime('%Y-%m-%d')
     historical_path = PROCESSED_DIR / "historical_main_features.csv"
@@ -160,3 +181,5 @@ if __name__ == "__main__":
 
 # cd C:\Users\roman\baseball_forecast_project\modeling
 # python train_xgb.py
+
+
