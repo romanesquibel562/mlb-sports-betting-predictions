@@ -42,6 +42,14 @@ def build_player_event_features(statcast_path: Path, filter_to_date=None):
         logger.warning("Empty Statcast dataset, skipping player feature generation.")
         return None
 
+    # --- updated: standardize key to mlbam_id early ---
+    if 'mlbam_id' not in df.columns and 'batter' in df.columns:
+        df = df.rename(columns={'batter': 'mlbam_id'})
+    if 'mlbam_id' not in df.columns:
+        logger.error("No 'mlbam_id' or 'batter' column present in Statcast data.")
+        return None
+    df['mlbam_id'] = pd.to_numeric(df['mlbam_id'], errors='coerce').astype('Int64')
+
     # Optional date filter
     if filter_to_date and 'game_date' in df.columns:
         try:
@@ -52,8 +60,13 @@ def build_player_event_features(statcast_path: Path, filter_to_date=None):
         except Exception as e:
             logger.warning(f"Failed to filter by game_date: {e}")
 
-    df['is_home_run'] = df['events'].apply(lambda x: 1 if x == 'home_run' else 0)
-    df['is_strike_out'] = df['events'].apply(lambda x: 1 if x == 'strikeout' else 0)
+    if 'events' not in df.columns:
+        df['events'] = ""
+    df['events'] = df['events'].fillna('')
+
+    df['is_home_run'] = (df['events'] == 'home_run').astype(int)
+    # --- updated: count all strikeout variants ---
+    df['is_strike_out'] = df['events'].str.startswith('strikeout', na=False).astype(int)
     df['plate_appearance'] = 1
 
     for col in ['launch_speed', 'bat_speed', 'swing_length', 'plate_x', 'plate_z']:
@@ -61,7 +74,8 @@ def build_player_event_features(statcast_path: Path, filter_to_date=None):
             df[col] = None
             logger.warning(f"Missing column '{col}', filling with NaN.")
 
-    summary = df.groupby('batter').agg({
+    # --- updated: group by mlbam_id (unified key) ---
+    summary = df.groupby('mlbam_id').agg({
         'launch_speed': 'mean',
         'bat_speed': 'mean',
         'swing_length': 'mean',
@@ -74,7 +88,6 @@ def build_player_event_features(statcast_path: Path, filter_to_date=None):
     summary['strikeout_rate'] = summary['is_strike_out'] / summary['plate_appearance']
 
     summary.rename(columns={
-        'batter': 'mlbam_id',
         'launch_speed': 'avg_launch_speed',
         'bat_speed': 'avg_bat_speed',
         'swing_length': 'avg_swing_length',
@@ -83,11 +96,20 @@ def build_player_event_features(statcast_path: Path, filter_to_date=None):
         'plate_appearance': 'plate_appearances'
     }, inplace=True)
 
-    # Merge with lookup
+    # Merge with lookup (tolerate older files that still use 'batter')
     try:
         lookup_df = pd.read_csv(LOOKUP_PATH)
-        summary = pd.merge(summary, lookup_df, how='left', on='mlbam_id')
-        logger.info("Merged batter lookup to add player_name and team.")
+        # tolerate header variants and trailing spaces
+        lookup_df.columns = [c.strip() for c in lookup_df.columns]
+        if 'mlbam_id' not in lookup_df.columns and 'batter' in lookup_df.columns:
+            lookup_df = lookup_df.rename(columns={'batter': 'mlbam_id'})
+        if 'mlbam_id' in lookup_df.columns:
+            lookup_df['mlbam_id'] = pd.to_numeric(lookup_df['mlbam_id'], errors='coerce').astype('Int64')
+            lookup_df = lookup_df.drop_duplicates(subset=['mlbam_id'])
+            summary = pd.merge(summary, lookup_df, how='left', on='mlbam_id')
+            logger.info("Merged batter lookup to add player_name and team.")
+        else:
+            logger.warning("Lookup file missing 'mlbam_id'; skipping merge.")
     except Exception as e:
         logger.warning(f"Failed to merge batter lookup: {e}")
 
