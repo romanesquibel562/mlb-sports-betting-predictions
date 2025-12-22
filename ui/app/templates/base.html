@@ -1,19 +1,49 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>{{ page_title or "MLB Dashboard" }}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <meta charset="UTF-8" />
+  <title>{{ page_title or "MLB Forecast Dashboard" }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark light" />
+  <meta property="og:title" content="{{ page_title or 'MLB Forecast Dashboard' }}" />
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" />
+  {% block extra_head %}{% endblock %}
 </head>
 <body>
+
 <nav class="nav">
-    <a href="{{ url_for('ui.power_rankings') }}">Power Rankings</a>
-    <!-- later: more nav links (Today’s Games, EV vs Vegas, etc.) -->
+  <div class="nav-left">
+    <a href="{{ url_for('ui.home') }}" class="nav-brand">MLB Forecast Dashboard</a>
+  </div>
+
+  <div class="nav-links">
+    <a href="{{ url_for('ui.power_rankings') }}"
+       class="{% if request.path.startswith('/power-rankings') %}active{% endif %}">
+      Team Power Rankings
+    </a>
+
+    <a href="{{ url_for('ui.game_lookup') }}"
+       class="{% if request.path.startswith('/game-lookup') %}active{% endif %}">
+      Game Lookup
+    </a>
+
+    <a href="{{ url_for('ui.h2h_lookup') }}"
+       class="{% if request.path.startswith('/head-to-head') %}active{% endif %}">
+      Head-to-Head
+    </a>
+
+    <a href="{{ url_for('ui.today_with_ev') }}"
+       class="{% if request.path.startswith('/today-with-ev') %}active{% endif %}">
+      Today + EV
+    </a>
+  </div>
 </nav>
 
 <div class="container">
-    {% block content %}{% endblock %}
+  {% block content %}{% endblock %}
 </div>
+
 </body>
 </html>

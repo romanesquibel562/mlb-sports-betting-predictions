@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div>
+  <h1>MLB Forecast Dashboard</h1>
+  <p class="subtitle" style="max-width: 640px;">
+    Explore model-driven power rankings, full-game breakdowns, matchup lookups, and historical insights.
+  </p>
+
+  <div style="display:grid; gap:1rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+
+    <!-- Power Rankings -->
+    <a href="{{ url_for('ui.power_rankings') }}" class="card-link">
+      <div class="card">
+        <h2 style="margin-top:0; font-size:1rem;">Team Power Rankings</h2>
+        <p style="font-size:0.9rem; color:var(--muted);">View the latest model-based rankings across all MLB teams.</p>
+      </div>
+    </a>
+
+    <!-- Today + EV (new combined page) -->
+    <a href="{{ url_for('ui.today_with_ev') }}" class="card-link">
+      <div class="card">
+        <h2 style="margin-top:0; font-size:1rem;">Today’s Games + EV</h2>
+        <p style="font-size:0.9rem; color:var(--muted);">
+          Odds vs model edges for today’s slate. Click through for detailed game pages.
+        </p>
+      </div>
+    </a>
+
+    <!-- Game Lookup -->
+    <a href="{{ url_for('ui.game_lookup') }}" class="card-link">
+      <div class="card">
+        <h2 style="margin-top:0; font-size:1rem;">Game Lookup</h2>
+        <p style="font-size:0.9rem; color:var(--muted);">
+          Search any matchup by date and team, then open a full analysis page.
+        </p>
+      </div>
+    </a>
+
+    <!-- Head-to-Head History -->
+    <a href="{{ url_for('ui.h2h_lookup') }}" class="card-link">
+      <div class="card" style="padding:1.25rem;">
+        <h2>Head-to-Head History</h2>
+        <p class="subtitle">Explore past meetings (same home/away) and see recent trends.</p>
+      </div>
+    </a>
+
+  </div>
+</div>
+{% endblock %}
+

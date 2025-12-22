@@ -8,14 +8,17 @@ if __name__ == "__main__":
     app.run(debug=True)
 
 
+# =============================================================================
 # cd C:\Users\roman\baseball_forecast_project\ui
 # flask --app wsgi run --debug
 
-#power rankings page:
-# http://127.0.0.1:5000/power-rankings
+# Home page:
+# http://127.0.0.1:5000/
 
-# Gemini Summary test page:
-# http://127.0.0.1:5000/api/test_gemini_summary
+# Game summaries page:
+# http://127.0.0.1:5000/game-summaries
 
-# Gemini API Key test page:
-# http://127.0.0.1:5000/api/test_gemini_key
+# http://127.0.0.1:5000/game-lookup
+
+# http://127.0.0.1:5000/head-to-head
+# =============================================================================

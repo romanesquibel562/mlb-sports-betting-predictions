@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="container">
+  <header style="margin-bottom:1rem;">
+    <h1 class="page-title">
+      {{ away|upper }} @ {{ home|upper }} — Prior to
+      <time datetime="{{ date }}">{{ date }}</time>
+    </h1>
+    <p class="subtitle">
+      Head-to-head results for the same home/away orientation up to (but not including) this date.
+    </p>
+  </header>
+
+  <div class="card">
+    {% if error %}
+      <p class="error">{{ error }}</p>
+
+    {% elif not h2h or not h2h.has_data %}
+      <p class="muted">No prior games with this home/away orientation were found before {{ date }}.</p>
+
+    {% else %}
+      {% set total = h2h.total_games %}
+      {% set w = h2h.home_wins %}
+      {% set l = h2h.home_losses %}
+      {% set w_pct = (100 * w / (total or 1)) | round(0, 'floor') %}
+      {% set l_pct = 100 - w_pct %}
+
+      <div style="display:grid; gap:1rem; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));">
+        <!-- Summary & bars -->
+        <section aria-labelledby="h2h-summary">
+          <h2 id="h2h-summary" style="margin:0 0 .5rem;">Home Team Results ({{ h2h.home_team }})</h2>
+          <p class="muted" style="margin:0 0 1rem;">
+            Same orientation ({{ h2h.away_team }} @ {{ h2h.home_team }}) prior to
+            <time datetime="{{ h2h.as_of }}">{{ h2h.as_of }}</time>.
+          </p>
+
+          <div class="label">Home Wins ({{ w }})</div>
+          <div class="h2h-bar" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ w_pct }}">
+            <div class="h2h-fill h2h-fill--win" data-pct="{{ w_pct }}"></div>
+          </div>
+          <div class="muted" style="font-size:.85rem; margin-top:.25rem;">{{ w_pct }}%</div>
+
+          <div class="label" style="margin-top:1rem;">Home Losses ({{ l }})</div>
+          <div class="h2h-bar" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ l_pct }}">
+            <div class="h2h-fill h2h-fill--loss" data-pct="{{ l_pct }}"></div>
+          </div>
+          <div class="muted" style="font-size:.85rem; margin-top:.25rem;">{{ l_pct }}%</div>
+
+          <div class="muted" style="margin-top:.75rem;">Total prior games: {{ total }}</div>
+        </section>
+
+        <!-- Recent meetings -->
+        <section aria-labelledby="recent-meetings">
+          <h2 id="recent-meetings" style="margin:0 0 .5rem;">Recent Meetings</h2>
+
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th scope="col">Date</th>
+                  <th scope="col">Matchup</th>
+                  <th scope="col">Winner</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for g in h2h.last_games %}
+                <tr>
+                  <td>
+                    {# If the route passed strings, show them; if it passed Timestamps, format safely #}
+                    {% if g.game_date is string %}
+                      <time datetime="{{ g.game_date }}">{{ g.game_date }}</time>
+                    {% elif g.game_date %}
+                      <time datetime="{{ g.game_date.strftime('%Y-%m-%d') }}">{{ g.game_date.strftime('%Y-%m-%d') }}</time>
+                    {% else %}
+                      —
+                    {% endif %}
+                  </td>
+                  <td>{{ g.away_team }} @ {{ g.home_team }}</td>
+                  <td>{{ g.winner or '—' }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    {% endif %}
+  </div>
+</section>
+
+<!-- Small, scoped styles for the bars -->
+<style>
+  .h2h-bar {
+    height: 24px;
+    border-radius: 999px;
+    background: #0f172a;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    position: relative;
+  }
+  .h2h-fill {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    width: 0%; /* set via JS */
+  }
+  .h2h-fill--win  { background: linear-gradient(90deg,#22c55e,#16a34a); }
+  .h2h-fill--loss { background: linear-gradient(90deg,#ef4444,#dc2626); }
+</style>
+
+<!-- Widths set from data-pct (no templated values in CSS) -->
+<script>
+  document.querySelectorAll('.h2h-fill[data-pct]').forEach(el => {
+    const pct = Number(el.getAttribute('data-pct')) || 0;
+    el.style.width = Math.max(0, Math.min(100, pct)) + '%';
+  });
+</script>
+{% endblock %}

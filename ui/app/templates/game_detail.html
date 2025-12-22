@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<a href="{{ url_for('ui.games_index', date=date_str) }}" class="back-link">← Back to Games ({{ date_str }})</a>
+
+<!-- Header row -->
+<div style="display:flex;align-items:center;gap:1rem;margin:0.75rem 0 1rem 0;">
+  <img src="{{ url_for('static', filename='logos/' ~ away_logo ~ '.png') }}" width="48" height="48" alt="{{ away }} logo" onerror="this.style.visibility='hidden'">
+  <h1 style="margin:0;">{{ away }} at {{ home }}</h1>
+  <img src="{{ url_for('static', filename='logos/' ~ home_logo ~ '.png') }}" width="48" height="48" alt="{{ home }} logo" onerror="this.style.visibility='hidden'">
+  <span style="margin-left:auto;color:var(--muted)">{{ date_str }}</span>
+</div>
+
+<!-- Main layout -->
+<div style="display:grid;gap:1rem;grid-template-columns:2fr 1fr;align-items:start;">
+
+  <!-- LEFT COLUMN -->
+  <div style="display:grid;gap:1rem;grid-template-columns:1fr 1fr;">
+
+    <!-- Model panel -->
+    <section class="card" style="grid-column:1 / -1;padding:1rem;border-radius:16px;">
+      <h2 style="margin-top:0;">Model</h2>
+      {% if prediction %}
+        <div>Win Probability ({{ home }}): <b>{{ '%.1f'|format(prediction.win_prob*100) }}%</b></div>
+        <div>Pick: <b>{{ prediction.pick }}</b></div>
+        {% set conf = 'Low' %}
+        {% if prediction.win_prob >= 0.62 %}{% set conf = 'High' %}
+        {% elif prediction.win_prob >= 0.55 %}{% set conf = 'Medium' %}{% endif %}
+        <div style="margin-top:.25rem;color:var(--muted);">Confidence: {{ conf }}</div>
+      {% else %}
+        <em>No prediction available for this date.</em>
+      {% endif %}
+    </section>
+
+    <!-- AI Summary (Gemini) -->
+    {% if summary %}
+    <section class="card" style="grid-column:1 / -1;padding:1rem;border-radius:16px;">
+      <h2 style="margin-top:0;">AI Matchup Summary</h2>
+      <div style="color:var(--muted);line-height:1.6;">
+        {{ summary | safe }}
+      </div>
+    </section>
+    {% endif %}
+
+    <!-- Away SP -->
+    <section class="card" style="padding:1rem;border-radius:16px;">
+      <h3 style="margin-top:0;">{{ header.away_pitcher or 'Away SP' }} — {{ away }}</h3>
+      {% if pitchers.away %}
+        <div>Velo: <b>{{ pitchers.away.avg_velocity|default('—') }}</b></div>
+        <div>Spin: <b>{{ pitchers.away.avg_spin_rate|default('—') }}</b></div>
+        <div>K%: <b>{{ pitchers.away.k_rate|default('—') }}</b></div>
+        <div>BB%: <b>{{ pitchers.away.bb_rate|default('—') }}</b></div>
+        <div>Whiff%: <b>{{ pitchers.away.whiff_pct|default('—') }}</b></div>
+        <div>Strike%: <b>{{ pitchers.away.strike_pct|default('—') }}</b></div>
+      {% else %}
+        <em>No pitcher stats found.</em>
+      {% endif %}
+    </section>
+
+    <!-- Home SP -->
+    <section class="card" style="padding:1rem;border-radius:16px;">
+      <h3 style="margin-top:0;">{{ header.home_pitcher or 'Home SP' }} — {{ home }}</h3>
+      {% if pitchers.home %}
+        <div>Velo: <b>{{ pitchers.home.avg_velocity|default('—') }}</b></div>
+        <div>Spin: <b>{{ pitchers.home.avg_spin_rate|default('—') }}</b></div>
+        <div>K%: <b>{{ pitchers.home.k_rate|default('—') }}</b></div>
+        <div>BB%: <b>{{ pitchers.home.bb_rate|default('—') }}</b></div>
+        <div>Whiff%: <b>{{ pitchers.home.whiff_pct|default('—') }}</b></div>
+        <div>Strike%: <b>{{ pitchers.home.strike_pct|default('—') }}</b></div>
+      {% else %}
+        <em>No pitcher stats found.</em>
+      {% endif %}
+    </section>
+
+    <!-- Team Form (Away) -->
+    <section class="card" style="padding:1rem;border-radius:16px;">
+      <h3 style="margin-top:0;">{{ away }} — Recent Form</h3>
+      {% if form.get(away) %}
+        <div>W-L: <b>{{ form[away].wins }}-{{ form[away].losses }}</b></div>
+        <div>Run Diff: <b>{{ form[away].run_diff }}</b></div>
+        <div>Streak: <b>{{ form[away].streak }}</b></div>
+        <div>Win%: <b>{{ (form[away].win_pct*100)|round(1) if form[away].win_pct is not none else '—' }}%</b></div>
+      {% else %}<em>No recent form data.</em>{% endif %}
+    </section>
+
+    <!-- Team Form (Home) -->
+    <section class="card" style="padding:1rem;border-radius:16px;">
+      <h3 style="margin-top:0;">{{ home }} — Recent Form</h3>
+      {% if form.get(home) %}
+        <div>W-L: <b>{{ form[home].wins }}-{{ form[home].losses }}</b></div>
+        <div>Run Diff: <b>{{ form[home].run_diff }}</b></div>
+        <div>Streak: <b>{{ form[home].streak }}</b></div>
+        <div>Win%: <b>{{ (form[home].win_pct*100)|round(1) if form[home].win_pct is not none else '—' }}%</b></div>
+      {% else %}<em>No recent form data.</em>{% endif %}
+    </section>
+
+    <!-- Team Batting Snapshot -->
+    <section class="card" style="grid-column:1 / -1;padding:1rem;border-radius:16px;">
+      <h3 style="margin-top:0;">Team Batting Snapshot (30-day)</h3>
+      <div style="display:grid;gap:.75rem;grid-template-columns:1fr 1fr;">
+        <div>
+          <div style="font-weight:600;margin-bottom:.25rem;">{{ away }}</div>
+          <div>Avg EV: <b>{{ bat[away].avg_launch_speed if bat.get(away) and bat[away].get('avg_launch_speed') is not none else '—' }}</b></div>
+          <div>HR%: <b>{{ bat[away].hr_rate if bat.get(away) and bat[away].get('hr_rate') is not none else '—' }}</b></div>
+          <div>K%: <b>{{ bat[away].k_rate if bat.get(away) and bat[away].get('k_rate') is not none else '—' }}</b></div>
+          <div>BB%: <b>{{ bat[away].bb_rate if bat.get(away) and bat[away].get('bb_rate') is not none else '—' }}</b></div>
+          <div>xwOBA: <b>{{ bat[away].xwoba if bat.get(away) and bat[away].get('xwoba') is not none else '—' }}</b></div>
+        </div>
+        <div>
+          <div style="font-weight:600;margin-bottom:.25rem;">{{ home }}</div>
+          <div>Avg EV: <b>{{ bat[home].avg_launch_speed if bat.get(home) and bat[home].get('avg_launch_speed') is not none else '—' }}</b></div>
+          <div>HR%: <b>{{ bat[home].hr_rate if bat.get(home) and bat[home].get('hr_rate') is not none else '—' }}</b></div>
+          <div>K%: <b>{{ bat[home].k_rate if bat.get(home) and bat[home].get('k_rate') is not none else '—' }}</b></div>
+          <div>BB%: <b>{{ bat[home].bb_rate if bat.get(home) and bat[home].get('bb_rate') is not none else '—' }}</b></div>
+          <div>xwOBA: <b>{{ bat[home].xwoba if bat.get(home) and bat[home].get('xwoba') is not none else '—' }}</b></div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- RIGHT COLUMN -->
+  <div style="display:grid;gap:1rem;">
+
+    <!-- Result panel -->
+    <section class="card" style="padding:1rem;border-radius:16px;">
+      <h2 style="margin-top:0;">Result</h2>
+      {% if result %}
+        <div>Winner: <b>{{ result.actual_winner }}</b></div>
+        {% if result.get('away_runs') is not none %}
+          <div>Final: {{ result.away_team }} {{ result.away_runs }} — {{ result.home_team }} {{ result.home_runs }}</div>
+        {% endif %}
+      {% else %}
+        <em>No result file found for this date.</em>
+      {% endif %}
+    </section>
+
+    <!-- Quick matchup facts -->
+    <section class="card" style="padding:1rem;border-radius:16px;">
+      <h3 style="margin-top:0;">Matchup Snapshot</h3>
+      <div style="color:var(--muted);font-size:.95rem;margin-bottom:.25rem;">Starting Pitchers</div>
+      <div>{{ header.away_pitcher or '—' }} vs {{ header.home_pitcher or '—' }}</div>
+
+      <div style="color:var(--muted);font-size:.95rem;margin:.75rem 0 .25rem;">Game Date</div>
+      <div>{{ date_str }}</div>
+    </section>
+
+    <!-- Back link (mobile-friendly duplicate) -->
+    <a href="{{ url_for('ui.games_index', date=date_str) }}" class="card-link" style="text-decoration:none;">
+      <div class="card" style="padding:1rem;border-radius:16px;text-align:center;">
+        ← Back to Games for {{ date_str }}
+      </div>
+    </a>
+
+  </div>
+</div>
+
+{% endblock %}

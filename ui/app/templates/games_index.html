@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1 style="margin:0 0 .5rem 0;">Games — {{ date_str }}</h1>
+
+<form method="get" style="margin:0 0 1rem 0;">
+  <label style="font-size:.95rem;color:var(--muted);margin-right:.5rem;">Select date</label>
+  <select name="date" onchange="this.form.submit()">
+    {% for d in dates %}
+      <option value="{{ d }}" {{ 'selected' if d==date_str else '' }}>{{ d }}</option>
+    {% endfor %}
+  </select>
+</form>
+
+{% if rows and rows|length %}
+<div style="display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));">
+  {% for g in rows %}
+  <a href="{{ url_for('ui.game_detail', date_str=g.game_date, away=g.away_team, home=g.home_team) }}"
+     class="card-link" style="text-decoration:none;">
+    <div class="card" style="padding:1rem;border-radius:16px;background:var(--card);box-shadow:var(--shadow);">
+      <!-- Teams row -->
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:.5rem;min-width:0;">
+          <img src="{{ url_for('static', filename='logos/' ~ g.away_logo ~ '.png') }}"
+               width="28" height="28" alt="{{ g.away_team }} logo"
+               onerror="this.style.visibility='hidden'">
+          <strong style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            {{ g.away_team }}
+          </strong>
+        </div>
+        <span style="color:var(--muted);">at</span>
+        <div style="display:flex;align-items:center;gap:.5rem;min-width:0;">
+          <img src="{{ url_for('static', filename='logos/' ~ g.home_logo ~ '.png') }}"
+               width="28" height="28" alt="{{ g.home_team }} logo"
+               onerror="this.style.visibility='hidden'">
+          <strong style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            {{ g.home_team }}
+          </strong>
+        </div>
+      </div>
+
+      <!-- Pitchers -->
+      <div style="margin-top:.5rem;font-size:.9rem;color:var(--muted);">
+        {{ g.away_pitcher or '—' }} vs {{ g.home_pitcher or '—' }}
+      </div>
+
+      <!-- Model block (optional) -->
+      {% if g.win_prob is not none or g.pick %}
+      <div style="margin-top:.75rem;padding:.5rem;border-radius:12px;background:rgba(255,255,255,0.04);">
+        {% if g.win_prob is not none %}
+          <div style="font-size:.95rem;">
+            Win Prob ({{ g.home_team }}):
+            <b>{{ '%.1f'|format(g.win_prob * 100) }}%</b>
+          </div>
+        {% endif %}
+        {% if g.pick %}
+          <div style="font-size:.95rem;">Pick: <b>{{ g.pick }}</b></div>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <!-- Footer -->
+      <div style="margin-top:.75rem;font-size:.85rem;color:var(--muted);display:flex;justify-content:space-between;align-items:center;">
+        <span>{{ g.game_date }}</span>
+        <span style="text-decoration:underline;">Open details →</span>
+      </div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+  <div class="card" style="padding:1rem;">
+    <em>No games found for {{ date_str }}.</em>
+  </div>
+{% endif %}
+
+{% endblock %}

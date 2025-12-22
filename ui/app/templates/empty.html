@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card" style="padding:1.25rem;">
+  <h1 class="page-title">{{ title or "Notice" }}</h1>
+  <p class="subtitle">{{ message or "No content to display." }}</p>
+
+  <p style="margin-top: 12px;">
+    <a class="btn-link" href="{{ url_for('ui.home') }}">← Back to Home</a>
+  </p>
+</div>
+{% endblock %}

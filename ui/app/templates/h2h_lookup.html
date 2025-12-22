@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="max-w-6xl mx-auto px-4 py-8">
+  <h1 class="page-title">Head-to-Head Lookup</h1>
+  <p class="page-subtitle">
+    Search historical games, then open a detail page to see prior meetings (same home/away) and home outcomes.
+  </p>
+
+  <div class="card mt-6">
+    <div class="flex" style="gap:12px; align-items:center; margin-bottom:12px;">
+      <input id="search" class="input" placeholder="Search by team, matchup, or date (YYYY-MM-DD)">
+    </div>
+
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th class="text-left">Date</th>
+            <th class="text-left">Matchup</th>
+            <th style="width:1%"></th>
+          </tr>
+        </thead>
+        <tbody id="rows">
+          {% for r in rows %}
+          {% set date_str = (r.game_date.isoformat() if r.game_date is not string and r.game_date is not none else (r.game_date or '')) %}
+          {% if not date_str and r.game_date is not none and r.game_date.__class__.__name__ in ['date','datetime'] %}
+            {% set date_str = r.game_date.date().isoformat() %}
+          {% endif %}
+          <tr>
+            <td class="text-slate-300">{{ date_str }}</td>
+            <td class="text-slate-200">{{ r.matchup_label }}</td>
+            <td class="text-right">
+              <a class="btn btn-primary"
+                 href="{{ url_for('ui.h2h_detail', date=date_str, home=r.home_team, away=r.away_team) }}">
+                View History
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+          {% if rows|length == 0 %}
+          <tr>
+            <td colspan="3" class="text-slate-400" style="padding:16px;">No historical results found.</td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const q = document.getElementById('search');
+  const rows = Array.from(document.querySelectorAll('#rows tr'));
+  q.addEventListener('input', () => {
+    const s = q.value.trim().toUpperCase();
+    rows.forEach(tr => tr.style.display = tr.innerText.toUpperCase().includes(s) ? '' : 'none');
+  });
+});
+</script>
+{% endblock %}

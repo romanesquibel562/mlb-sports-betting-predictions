@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block content %}
+<a href="{{ url_for('ui.index') }}" class="back-link">← Back to Dashboard</a>
+
+<div style="display:flex;align-items:center;gap:.75rem;margin:.25rem 0 1rem 0;">
+  <h1 style="margin:0;">Today’s Games + EV</h1>
+  <span style="margin-left:auto;color:var(--muted)">{{ date_str }}</span>
+</div>
+
+<div class="card" style="padding:1rem;border-radius:16px;">
+  <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:.75rem;">
+    {% if has_predictions %}
+      <span class="pill pill-good">Model predictions loaded</span>
+    {% else %}
+      <span class="pill pill-warn">No model predictions</span>
+    {% endif %}
+
+    {% if has_odds %}
+      <span class="pill pill-good">Odds loaded</span>
+    {% else %}
+      <span class="pill pill-warn">No odds file</span>
+    {% endif %}
+  </div>
+
+  {% if rows %}
+    {% for r in rows %}
+      <div class="card" style="padding:1rem;border-radius:14px;margin-bottom:.75rem;">
+        <div style="display:grid;grid-template-columns:auto 1fr auto;gap:1rem;align-items:center;">
+          <div style="display:flex;align-items:center;gap:.5rem;">
+            <img src="{{ url_for('static', filename='logos/' ~ r.away_logo ~ '.png') }}" width="28" height="28" alt="" onerror="this.style.visibility='hidden'">
+            <div style="line-height:1.1;">
+              <div style="font-weight:600;">{{ r.away_team }}</div>
+              <div style="color:var(--muted);font-size:.9rem;">at</div>
+              <div style="font-weight:600;">{{ r.home_team }}</div>
+            </div>
+            <img src="{{ url_for('static', filename='logos/' ~ r.home_logo ~ '.png') }}" width="28" height="28" alt="" onerror="this.style.visibility='hidden'">
+          </div>
+
+          <div style="color:var(--muted);font-size:.9rem;">
+            <span style="margin-right:.75rem;">AW {{ r.away_ml if r.away_ml is not none else '—' }}</span>
+            <span style="margin-right:.75rem;">|</span>
+            <span>HM {{ r.home_ml if r.home_ml is not none else '—' }}</span>
+            <div style="margin-top:.25rem;">
+              HM imp {{ (r.home_implied*100)|round(1) if r.home_implied is not none else '—' }}% |
+              HM model {{ (r.home_win_prob*100)|round(1) if r.home_win_prob is not none else '—' }}%
+            </div>
+            <div style="margin-top:.15rem;">
+              EV: <span style="margin-right:1rem;">H {{ (r.ev_home*100)|round(1) if r.ev_home is not none else '—' }}%</span> /
+              <span>A {{ (r.ev_away*100)|round(1) if r.ev_away is not none else '—' }}%</span>
+            </div>
+
+            {% if r.gemini_blurb %}
+              <div style="margin-top:.5rem;color:var(--muted-strong);font-size:.95rem;">
+                {{ r.gemini_blurb }}
+              </div>
+            {% endif %}
+          </div>
+
+          <div style="text-align:right;">
+            {% if r.best_side %}
+              <span class="pill {% if r.best_ev and r.best_ev > 0 %}pill-good{% else %}pill{% endif %}">
+                Best: {{ r.best_side }} ({{ (r.best_ev*100)|round(1) if r.best_ev is not none else '—' }}%)
+              </span>
+              {% if r.sportsbook %}
+                <span class="pill" style="margin-left:.5rem;">{{ r.sportsbook }}</span>
+              {% endif %}
+            {% endif %}
+            <div style="margin-top:.5rem;">
+              <a class="btn" href="{{ url_for('ui.game_detail', date_str=date_str, away=r.away_team, home=r.home_team) }}">
+                Open Game Page
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <em>No games found for {{ date_str }}.</em>
+  {% endif %}
+</div>
+{% endblock %}
