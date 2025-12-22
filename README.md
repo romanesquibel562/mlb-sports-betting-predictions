@@ -308,16 +308,6 @@ These results reflect strong predictive power and low error, ideal for sports fo
 
 ## Example Output
 
--csv
-Game Date,Home Team,Away Team,Win Probability,Prediction
-2025-07-01,ATL,LAA,0.51,Pick: ATL
-2025-07-01,TOR,NYY,0.34,Pick: NYY
-2025-07-01,TB,OAK,0.69,Pick: TB
-Explanation:
-The Win Probability column represents the model’s estimated probability that the home team will win. If this value is greater than 0.50, the model recommends picking the home team. If it's less than or equal to 0.50, the model picks the away team.
-
-For example:
-
 ![image](https://github.com/user-attachments/assets/ce48f386-aa72-4eb6-a875-128f87197000)
 
 
