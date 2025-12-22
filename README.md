@@ -32,36 +32,172 @@ To develop a scalable and intelligent system capable of predicting daily MLB gam
 ## Project Structure and File Descriptions
 
 <pre> ``` 
- baseball_forecast_project/
+baseball_forecast_project/
+│
+├── config/
+│   └── ui_weights.yml
+│       # Configuration for UI weighting and display logic
+│
+├── dashboard/
+│   # (Reserved for future dashboard or analytics extensions)
 │
 ├── data/
-│ ├── processed/
-│ │ ├── historical_main_features.csv
-│ │ ├── main_features_YYYY-MM-DD.csv
-│ │ ├── pitcher_stat_features_YYYY-MM-DD.csv
-│ │ ├── batter_stat_features_YYYY-MM-DD.csv
-│ │ ├── team_form_YYYY-MM-DD.csv
-│ │ ├── readable_win_predictions_for_YYYY-MM-DD_using_YYYY-MM-DD.csv
-│ └── raw/
-│ └── Raw data used for intermediate steps (Statcast, scraped HTML, etc.)
+│   # Central data directory (raw + processed outputs)
 │
-├── scraping/
-│ ├── scrape_matchups.py
-│ ├── scrape_statcast.py
-│ ├── scrape_team_form_mlb.py
-│ ├── scrape_game_results.py
+├── data_source/
+│   └── simulation.py
+│       # Experimental simulation and data source utilities
+│
+├── evaluation/
+│   # Model evaluation utilities and diagnostics
 │
 ├── features/
-│ ├── build_pitcher_stat_features.py
-│ ├── build_batter_stat_features.py
-│ ├── map_batter_ids.py
-│ ├── build_player_event_features.py
+│   ├── data/
+│   │   # Intermediate feature-generation artifacts
+│   │
+│   ├── build_batter_stat_features.py
+│   │   # Builds batter Statcast performance features
+│   │
+│   ├── build_pitcher_event_features.py
+│   │   # Creates event-level pitcher metrics (whiffs, strikeouts, etc.)
+│   │
+│   ├── build_pitcher_stat_features.py
+│   │   # Aggregates recent pitcher Statcast metrics
+│   │
+│   ├── build_player_event_features.py
+│   │   # Event-level Statcast feature engineering
+│   │
+│   ├── engineer_features.py
+│   │   # Feature transformations and aggregations
+│   │
+│   ├── generate_historical_batter_stats.py
+│   │   # Rolling historical batter feature generation
+│   │
+│   ├── generate_historical_features.py
+│   │   # Orchestrates historical feature backfilling
+│   │
+│   ├── generate_historical_pitcher_stats.py
+│   │   # Rolling historical pitcher feature generation
+│   │
+│   ├── generate_historical_team_form.py
+│   │   # Rolling team momentum feature generation
+│   │
+│   ├── historical_main_features.py
+│   │   # Builds unified historical training dataset
+│   │
+│   └── main_features.py
+│       # Builds current-day feature set for predictions
+│
+├── mlb-sports-betting-predictions/
+│   # (Optional exploratory betting analysis outputs)
 │
 ├── modeling/
-│ ├── historical_main_features.py
-│ ├── train_model.py
+│   ├── data/
+│   │   # Model-ready datasets
+│   │
+│   ├── evaluate_prediction_accuracy.py
+│   │   # Backtesting and accuracy evaluation
+│   │
+│   ├── generate_power_rankings.py
+│   │   # Model-driven team power rankings
+│   │
+│   ├── predict_today_matchups.py
+│   │   # Generates predictions for today’s games
+│   │
+│   ├── train_model.py
+│   │   # Primary ML training pipeline
+│   │
+│   └── train_xgb.py
+│       # XGBoost-based training and calibrated predictions
+│
+├── plots/
+│   # Saved evaluation plots and diagnostics
+│
+├── scraping/
+│   ├── data/
+│   │   # Raw scraped outputs
+│   │
+│   ├── build_odds_file.py
+│   │   # Builds sportsbook odds datasets
+│   │
+│   ├── scrape_game_results.py
+│   │   # Scrapes historical MLB game outcomes
+│   │
+│   ├── scrape_historical_matchups.py
+│   │   # Scrapes past matchups for training
+│   │
+│   ├── scrape_matchups.py
+│   │   # Scrapes daily matchups and probable pitchers
+│   │
+│   ├── scrape_matchups_alt.py
+│   │   # Alternate matchup scraper (fallback)
+│   │
+│   ├── scrape_statcast.py
+│   │   # Downloads recent Statcast data
+│   │
+│   ├── scrape_team_form_mlb.py
+│   │   # Scrapes team recent form
+│   │
+│   ├── scrape_weather.py
+│   │   # Scrapes game-day weather data
+│   │
+│   └── scrapetest.py
+│       # Experimental scraping tests
+│
+├── tests/
+│   # Unit and integration tests
+│
+├── ui/
+│   ├── app/
+│   │   ├── static/
+│   │   │   └── styles.css
+│   │   │       # UI styling
+│   │   │
+│   │   ├── templates/
+│   │   │   ├── base.html
+│   │   │   ├── index.html
+│   │   │   ├── games_index.html
+│   │   │   ├── game_detail.html
+│   │   │   ├── game_lookup.html
+│   │   │   ├── today_ev.html
+│   │   │   ├── h2h_lookup.html
+│   │   │   ├── h2h_detail.html
+│   │   │   └── power_rankings.html
+│   │   │
+│   │   ├── data_loader.py
+│   │   │   # Loads processed model outputs for UI
+│   │   │
+│   │   ├── gemini_summarizer.py
+│   │   │   # LLM-powered game summaries
+│   │   │
+│   │   ├── routes_api.py
+│   │   │   # API endpoints
+│   │   │
+│   │   └── routes_ui.py
+│   │       # Flask UI routes
+│   │
+│   └── wsgi.py
+│       # WSGI entry point
+│
+├── utils/
+│   ├── data/
+│   │   # Reference lookup data
+│   │
+│   ├── build_batter_team_lookup.py
+│   │   # Maps batters to teams
+│   │
+│   └── map_batter_ids.py
+│       # Batter ID mapping utilities
+│
+├── .env
+│   # Environment variables (not committed)
+│
+├── requirements.txt
+│   # Python dependencies
 │
 ├── run_daily_pipeline.py
+│   # End-to-end orchestration script
+│
 └── README.md ``` </pre>
 
 
